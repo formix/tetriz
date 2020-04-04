@@ -3,6 +3,15 @@
 #include "retroz-bios-inc.z80"
 #include "callstack.z80"
 
+
+    MACRO   _EX &reg1, &reg2
+    PUSH    &reg1
+    PUSH    &reg2
+    POP     &reg1
+    POP     &reg2
+    ENDM
+
+
 ;layout
 #code   _HEADER
 #code   _PROGRAM
@@ -69,7 +78,7 @@ PADDING         DEFB "+++++",0
     CALL    PRINT_PLAYGROUND
 
     CALL    SPAWN_SHAPE
-    CALL    DRAW_SHAPE
+    ;CALL    DRAW_SHAPE
 
 
     _ADDLP  PRESS_ANY_KEY
