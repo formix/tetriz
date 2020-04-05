@@ -93,13 +93,11 @@ PROGRAM_LOOP:
     ; Rotate clockwise
     CP      'w'
     LD      B,1
-    CALL    Z,CAN_ROTATE
     CALL    Z,SPRITE_ROTATE
 
     ; Rotate counter clockwise
     CP      's'
     LD      B,-1
-    CALL    Z,CAN_ROTATE
     CALL    Z,SPRITE_ROTATE
 
     ; Move right
@@ -130,10 +128,28 @@ PROGRAM_EXIT:
     JP      0                   ; Soft reset
 
 
+; Set Z if translation can occur
+; Set NZ if translation cannot occur
+CAN_TRANSLATE:
+    PUSH    BC
+    _ADDLP  (SPRITE)            ; Add sprite index and orient as param
+    _CALL   GET_SPRITE          ; Get the future sprite in HL
+    EX      DE,HL               ; Save sprite address in DE
+    LD      A,(SPRITE_COL)
+    ADD     B
+    LD      C,A
+    LD      A,(SPRITE_ROW)
+    LD      B,A
+    _ADDRP  BC
+    _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
+    EX      DE,HL               ; HL <- sprite address, DE <- position
+    JR      CHECK_COLLISION
+
 
 ; Set Z if rotation can occur
 ; Set NZ if rotation cannot occur
 CAN_ROTATE:
+    PUSH    BC
     LD      A,(SPRITE_ORIENT)
     ADD     B
     AND     $03                 ; Modulo 4
@@ -145,24 +161,25 @@ CAN_ROTATE:
     EX      DE,HL               ; Save sprite address in DE
     _ADDLP  (SPRITE_LOC)
     _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
-    EX      DE,HL               ; DE <- position, HL <- sprite address
+    EX      DE,HL               ; HL <- sprite address, DE <- position
     
-    ; chck for collision
+    ; check for collision
+CHECK_COLLISION:
     LD      B,4
-CAN_ROTATE_NEXT_ROW:
+CHECK_COLLISION_NEXT_ROW:
     LD      C,4
-CAN_ROTATE_CHECK_CHAR;
+CHECK_COLLISION_CHECK_CHAR;
     LD      A,(HL)
-    CP      NULL
-    JR      Z,CAN_ROTATE_NEXT_CHAR
+    CP      '0'
+    JR      Z,CHECK_COLLISION_NEXT_CHAR
     LD      A,(DE)
     CP      NULL
-    RET     NZ                  ; Both are non null, we can not rotate
-CAN_ROTATE_NEXT_CHAR:
-    INC     HL
-    INC     DE
+    JR      NZ,CHECK_COLLISION_COLLIDE  ; Both are non null, we can not rotate
+CHECK_COLLISION_NEXT_CHAR:
+    INC     HL                  ; Move to the next sprite char
+    INC     DE                  ; Move to the next playground cell
     DEC     C
-    JR      NZ,CAN_ROTATE_CHECK_CHAR
+    JR      NZ,CHECK_COLLISION_CHECK_CHAR
     EX      DE,HL               ; Put position in HL
     PUSH    BC                  ; Save our counters
     LD      BC,PG_COLS - 4      ; set position at start of next sprite line
@@ -170,25 +187,40 @@ CAN_ROTATE_NEXT_CHAR:
     POP     BC                  ; restore counters
     EX      DE,HL               ; put back position in DE and sprite in HL
     DEC     B
-    JR      NZ,CAN_ROTATE_NEXT_ROW
-    RET                         ; Z is set, we can rotate
+    JR      NZ,CHECK_COLLISION_NEXT_ROW
+    JR      CHECK_COLLISION_FREE
+CHECK_COLLISION_COLLIDE:
+    POP     BC
+    SUB     A
+    ADD     1                   ; Set NZ
+    RET
+CHECK_COLLISION_FREE:
+    POP     BC
+    SUB     A                   ; Set Z
+    RET                    
 
 
 SPRITE_ROTATE:
     _CALL   EREASE_SPRITE
+    CALL    CAN_ROTATE
+    JR      NZ,SPRITE_ROTATE_EXIT ; If NZ is set, cannot rotate and exit
     LD      A,(SPRITE_ORIENT)
     ADD     B
     AND     $03                 ; Modulo 4
     LD      (SPRITE_ORIENT),A
+SPRITE_ROTATE_EXIT:
     CALL    DRAW_SPRITE
     RET
 
 
 SPRITE_TRANSLATE:
     _CALL   EREASE_SPRITE
+    CALL    CAN_TRANSLATE
+    JR      NZ,CAN_TRANSLATE_EXIT ; If NZ is set, cannot translate and exit
     LD      A,(SPRITE_COL)
     ADD     B
     LD      (SPRITE_COL),A
+CAN_TRANSLATE_EXIT:    
     CALL   DRAW_SPRITE
     RET
 
