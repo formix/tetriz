@@ -255,7 +255,7 @@ CAN_TRANSLATE_EXIT:
 
 
 SPRITE_DOWN:
-    _CALL   EREASE_SPRIgit 
+    _CALL   EREASE_SPRITE
     CALL    CAN_GO_DOWN
     JR      NZ,SPRITE_DOWN_EXIT
     LD      A,(SPRITE_ROW)
@@ -382,7 +382,7 @@ SPAWN_SPRITE:
     SUB     A
     LD      D,0
     LD      E,7                 ; Divide by 7
-    CALL    BC_DIV_BY_DE
+    CALL    BC_DIVBY_DE
     LD      A,L                 ; Get the remainder
     LD      (SPRITE_INDEX),A    ; as the sprite index
     LD      A,0
