@@ -4,13 +4,11 @@
 #include "callstack.z80"
 
 
-    MACRO   _EX &reg1, &reg2
-    PUSH    &reg1
-    PUSH    &reg2
-    POP     &reg1
-    POP     &reg2
+    MACRO _ADD_DEBC
+    EX      DE,HL
+    ADD     HL,BC
+    EX      DE,HL
     ENDM
-
 
 ;layout
 #code   _HEADER
@@ -29,10 +27,10 @@ PG_COLS         EQU 12
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
 RND_SEED        DEFS 1
-SHAPE_INDEX     DEFS 1
-SHAPE_ORIENT    DEFS 1
-SHAPE_ROW       DEFS 1
-SHAPE_COL       DEFS 1
+SPRITE_INDEX    DEFS 1
+SPRITE_ORIENT   DEFS 1
+SPRITE_ROW      DEFS 1
+SPRITE_COL      DEFS 1
 SCREEN_DIRTY    DEFS 1
 
 
@@ -50,7 +48,7 @@ PRESS_ANY_KEY   DEFB "Press any key to reset...",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "+++++",0
 
-#include "shapes.z80"
+#include "tetroids.z80"
 
 
 #code _PROGRAM
@@ -65,9 +63,7 @@ PADDING         DEFB "+++++",0
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
-
     CALL    INIT_PLAYGROUND
-    CALL    INIT_SHAPES
 
     _ADDLP  PADDING
     _CALL   PRINT
@@ -77,8 +73,8 @@ PADDING         DEFB "+++++",0
     _CALL   PRINTLN
     CALL    PRINT_PLAYGROUND
 
-    CALL    SPAWN_SHAPE
-    ;CALL    DRAW_SHAPE
+    CALL    SPAWN_SPRITE
+    CALL    DRAW_SPRITE
 
 
     _ADDLP  PRESS_ANY_KEY
@@ -138,17 +134,17 @@ INIT_PLAYGROUND:
     LD      C,0
     LD      HL,PLAYGROUND
 INIT_PLAYGROUND_LINE:
-    LD      A,'+'
+    LD      A,'+' - ' '
     LD      (HL),A
     INC     HL
     LD      B,10
-    LD      A,' '
+    LD      A,0
 INIT_PLAYGROUND_CELL:
     LD      (HL),A
     INC     HL
     DEC     B
     JR      NZ,INIT_PLAYGROUND_CELL
-    LD      A,'+'
+    LD      A,'+' - ' '
     LD      (HL),A
     INC     HL
     INC     C
@@ -157,7 +153,7 @@ INIT_PLAYGROUND_CELL:
     JR      NZ,INIT_PLAYGROUND_LINE
     LD      B,12
 INIT_PLAYGROUND_BOTTOM:
-    LD      A,'+'
+    LD      A,'+' - ' '
     LD      (HL),A
     INC     HL
     DEC     B
@@ -166,11 +162,16 @@ INIT_PLAYGROUND_BOTTOM:
 
 
 PRINT_PLAYGROUND:
+    LD      B,2
+    LD      C,0
+    _ADDRP  BC
+    _CALL   SET_POS
     LD      HL,PLAYGROUND
     LD      B,12
     LD      C,0
 PRINT_PLAYGROUND_CHAR
     LD      A,(HL)
+    ADD     ' '
     CALL    OUTC
     CALL    OUTC
     INC     HL
@@ -189,93 +190,83 @@ PRINT_PLAYGROUND_END:
     RET
 
 
-; Repace spaces with \0
-INIT_SHAPES:
-    LD      C,0
-    LD      HL,SHAPES
-    LD      DE,SHAPES_END
-INIT_SHAPES_COMPARE:    
-    LD      A,' '
-    CP      (HL)
-    JR      Z,INIT_SHAPES_CLEAR
-    JR      INIT_SHAPES_NEXT
-INIT_SHAPES_CLEAR:
-    LD      (HL),C
-INIT_SHAPES_NEXT:
-    INC     HL
-    LD      A,D
-    CP      H
-    JR      NZ,INIT_SHAPES_COMPARE
-    LD      A,E
-    CP      L
-    JR      NZ,INIT_SHAPES_COMPARE
-    RET
-
-
-SPAWN_SHAPE:
+SPAWN_SPRITE:
     LD      A,3 ; shall select randomly here
-    LD      (SHAPE_INDEX),A
+    LD      (SPRITE_INDEX),A
     LD      A,0
-    LD      (SHAPE_ORIENT),A
-    LD      A,0
-    LD      (SHAPE_ROW),A
+    LD      (SPRITE_ORIENT),A
+    LD      A,1
+    LD      (SPRITE_ROW),A
     LD      A,4
-    LD      (SHAPE_COL),A
+    LD      (SPRITE_COL),A
     RET
 
 
-DRAW_SHAPE:
-    ; find position in the shape table
-    LD      H,16*4
-    LD      A,(SHAPE_INDEX)
-    LD      L,A
-    _ADDRP  HL
-    _CALL   MUL8                ; HL is now at the first orient of the shape
-    LD      BC,16
-    LD      E,0
-    LD      A,(SHAPE_ORIENT)
-DRAW_SHAPE_SEARCH_ORIENT:
-    CP      E
-    JR      Z,DRAW_SHAPE_ORIENT_FOUND
-    ADD     HL,BC
-    INC     E
-    JR      DRAW_SHAPE_SEARCH_ORIENT
-DRAW_SHAPE_ORIENT_FOUND:
-    PUSH    HL                  ; Save the selected shape
-    LD      HL,SHAPE_ROW
-    LD      B,(HL)
-    LD      C,PG_ROWS
-    _ADDRP  BC
-    _CALL   MUL8                ; HL targets the start of the row
-    LD      DE,(SHAPE_COL)
-    ADD     HL,DE               ; HL is at the right position in PLAYGROUND
-    PUSH    HL
-    POP     DE                  ; DE contains the position in PLAYGROUND
-    POP     HL                  ; HL contains the selected shape
-    LD      B,4                 ; Initialize the row counter
-DRAW_SHAPE_ROW:
-    LD      C,4                 ; Initialize the col counter
-DRAW_SHAPE_CHAR:
-    LD      A,(HL)
-    LD      (DE),A
+DRAW_SPRITE:
+    _CALL   GET_SPRITE
+    PUSH    HL                  ; Save the sprite address on the stack
+    _CALL   GET_PLAYGROUND_POS  ; Get the drawing start address
+    EX      DE,HL               ; Put the drawing address in DE
+    POP     HL                  ; Get back the sprite address in HL
+    LD      B,4                 ; Number of rows of the sprite
+DRAW_SPRITE_ROW:
+    LD      C,4                 ; Number of columns of the sprite
+DRAW_SPRITE_CHAR:
+    LD      A,(HL)              ; Load the first sprite byte
+    SUB     ' '                 ; Check if it is empty
+    JR      Z,DRAW_SPRITE_NEXTCHAR  ; Do not print anything if empty
+    LD      (DE),A              ; Set the playground "pixel"
+DRAW_SPRITE_NEXTCHAR:
     INC     HL
     INC     DE
     DEC     C
-    JR      NZ,DRAW_SHAPE_CHAR
-    PUSH    HL
-    PUSH    DE
-    POP     HL
-    LD      DE,PG_COLS
-    ADD     HL,DE               ; Moved the playground pos to the next row
-    PUSH    HL
-    POP     DE
-    POP     HL                  ; HL is back in the shape
+    JR      NZ,DRAW_SPRITE_CHAR ; Print the next char if not zero
     DEC     B
-    JR      NZ,DRAW_SHAPE_ROW
+    JR      Z,DRAW_SPRITE_END   ; If last row was printed, exit
+    PUSH    BC                  ; Save counters
+    LD      BC,PG_COLS - 4      ; Get the number of byte to skip
+    _ADD_DEBC                   ; Skip to the next line
+    POP     BC                  ; Get counters back in BC
+    JR      DRAW_SPRITE_ROW     ; Print the next row
+DRAW_SPRITE_END:
     LD      A,1
-    LD      (SCREEN_DIRTY),A
+    LD      (SCREEN_DIRTY),A    ; Set the screen dirty byte
     RET
 
+
+GET_SPRITE:
+    LD      B,16*4              ; Memeory size of a tetroid
+    LD      A,(SPRITE_INDEX)    ; Current tetroid
+    LD      C,A
+    _ADDRP  BC                  ; Add the two 8 bit reg as parameters
+    _CALL   MUL8                ; Multiply to get the tetroid index
+    PUSH    HL                  ; Save tetroid index on the stack
+    LD      B,16                ; Memory size of a tetroid sprite
+    LD      A,(SPRITE_ORIENT)   ; Load the tetroid orientation
+    LD      C,A
+    _ADDRP  BC                  ; Param: tetroid size and orientation
+    _CALL   MUL8                ; Multiply together to get the shift
+    POP     BC                  ; Get the tetroid index back in BC
+    ADD     HL,BC               ; Add orient. to tetroid index = sprite index
+    LD      BC,TETROIDS         ; Load the TETROIDS address in BC
+    ADD     HL,BC               ; Add the tetroid address to the sprite index
+    _RET_HL HL                  ; Return the tetroid sprite address
+
+
+GET_PLAYGROUND_POS:
+    LD      A,(SPRITE_ROW)       ; Load the sprite row
+    LD      B,A
+    LD      C,PG_COLS           ; Load the number of columns in a row
+    _ADDRP  BC                  ; Add the two 8 bit params
+    _CALL   MUL8                ; Multiply them together
+    XOR     A                   ; Set A to 0
+    LD      B,A                 ; Reset B
+    LD      A,(SPRITE_COL)       ; Load the SPRITE col
+    LD      C,A
+    ADD     HL,BC               ; Add the column to the row index
+    LD      BC,PLAYGROUND       ; Load the playground address
+    ADD     HL,BC               ; Add the address to the index
+    _RET_HL HL                  ; return the sprite positin in playground
 
 ; ***************************************************************************
 ; Multiply the two byte parameters and return the result in a word.
