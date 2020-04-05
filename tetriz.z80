@@ -67,9 +67,8 @@ PADDING         DEFB "+++++",0
 
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 WAIT_KEY:
-    LD      HL,(RANDOM_SEED)
-    INC     HL
-    LD      (RANDOM_SEED),HL
+    LD      HL,RANDOM_SEED
+    INC     (HL)
     CALL    GETCHAR
     JR      Z,WAIT_KEY
 
@@ -497,6 +496,7 @@ GET_PLAYGROUND_POS:
     _RET_HL HL                  ; return the sprite positin in playground
 
 
+
 ; 16-bit xorshift pseudorandom number generator by John Metcalf
 ; 20 bytes, 86 cycles (excluding ret)
 ; returns   hl = pseudorandom number
@@ -508,7 +508,6 @@ GET_PLAYGROUND_POS:
 ; hl ^= hl << 8
 ; some alternative shift triplets which also perform well are:
 ; 6, 7, 13; 7, 9, 13; 9, 7, 13.
-
 XRND:
   ld hl,(RANDOM_SEED)
   ld a,h
