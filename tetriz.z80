@@ -20,16 +20,19 @@
 EXEC_TARGET     EQU $8100
 PG_ROWS         EQU 21
 PG_COLS         EQU 12
+NULL            EQU 0
 
 #data _HEAP
     .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
 
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
-SPRITE_INDEX    DEFS 1
+SPRITE:
 SPRITE_ORIENT   DEFS 1
-SPRITE_ROW      DEFS 1
+SPRITE_INDEX    DEFS 1
+SPRITE_LOC:
 SPRITE_COL      DEFS 1
+SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 
 
@@ -90,11 +93,13 @@ PROGRAM_LOOP:
     ; Rotate clockwise
     CP      'w'
     LD      B,1
+    CALL    Z,CAN_ROTATE
     CALL    Z,SPRITE_ROTATE
 
     ; Rotate counter clockwise
     CP      's'
     LD      B,-1
+    CALL    Z,CAN_ROTATE
     CALL    Z,SPRITE_ROTATE
 
     ; Move right
@@ -122,8 +127,51 @@ PROGRAM_EXIT:
     _CALL   SET_POS
     _ADDLP  RESETTING
     _CALL   PRINTLN
-    JP      0               ; Soft reset
+    JP      0                   ; Soft reset
 
+
+
+; Set Z if rotation can occur
+; Set NZ if rotation cannot occur
+CAN_ROTATE:
+    LD      A,(SPRITE_ORIENT)
+    ADD     B
+    AND     $03                 ; Modulo 4
+    LD      E,A                 ; Put projected orientation in E
+    LD      A,(SPRITE_INDEX)
+    LD      D,A                 ; Put index in D
+    _ADDRP  DE                  ; Add sprite index and orient as param
+    _CALL   GET_SPRITE          ; Get the future sprite in HL
+    EX      DE,HL               ; Save sprite address in DE
+    _ADDLP  (SPRITE_LOC)
+    _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
+    EX      DE,HL               ; DE <- position, HL <- sprite address
+    
+    ; chck for collision
+    LD      B,4
+CAN_ROTATE_NEXT_ROW:
+    LD      C,4
+CAN_ROTATE_CHECK_CHAR;
+    LD      A,(HL)
+    CP      NULL
+    JR      Z,CAN_ROTATE_NEXT_CHAR
+    LD      A,(DE)
+    CP      NULL
+    RET     NZ                  ; Both are non null, we can not rotate
+CAN_ROTATE_NEXT_CHAR:
+    INC     HL
+    INC     DE
+    DEC     C
+    JR      NZ,CAN_ROTATE_CHECK_CHAR
+    EX      DE,HL               ; Put position in HL
+    PUSH    BC                  ; Save our counters
+    LD      BC,PG_COLS - 4      ; set position at start of next sprite line
+    ADD     HL,BC               ; move position to start of next row
+    POP     BC                  ; restore counters
+    EX      DE,HL               ; put back position in DE and sprite in HL
+    DEC     B
+    JR      NZ,CAN_ROTATE_NEXT_ROW
+    RET                         ; Z is set, we can rotate
 
 
 SPRITE_ROTATE:
@@ -132,7 +180,7 @@ SPRITE_ROTATE:
     ADD     B
     AND     $03                 ; Modulo 4
     LD      (SPRITE_ORIENT),A
-    CALL   DRAW_SPRITE
+    CALL    DRAW_SPRITE
     RET
 
 
@@ -268,7 +316,7 @@ SPAWN_SPRITE:
     LD      (SPRITE_INDEX),A
     LD      A,0
     LD      (SPRITE_ORIENT),A
-    LD      A,1
+    LD      A,0
     LD      (SPRITE_ROW),A
     LD      A,4
     LD      (SPRITE_COL),A
@@ -277,8 +325,10 @@ SPAWN_SPRITE:
 
 DRAW_SPRITE:
     DI
+    _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
+    _ADDLP  (SPRITE_LOC)
     _CALL   GET_PLAYGROUND_POS  ; Get the drawing start address
     EX      DE,HL               ; Put the drawing address in DE
     POP     HL                  ; Get back the sprite address in HL
@@ -309,8 +359,10 @@ DRAW_SPRITE_END:
 
 EREASE_SPRITE:
     DI
+    _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
+    _ADDLP  (SPRITE_LOC)
     _CALL   GET_PLAYGROUND_POS  ; Get the drawing start address
     EX      DE,HL               ; Put the drawing address in DE
     POP     HL                  ; Get back the sprite address in HL
@@ -342,15 +394,14 @@ EREASE_SPRITE_END:
 
 
 GET_SPRITE:
+    _GETP   DE,0                ; D = sprite index, E = orientation
     LD      B,16*4              ; Memeory size of a tetroid
-    LD      A,(SPRITE_INDEX)    ; Current tetroid
-    LD      C,A
+    LD      C,D                 ; At sprite index
     _ADDRP  BC                  ; Add the two 8 bit reg as parameters
     _CALL   MUL8                ; Multiply to get the tetroid index
     PUSH    HL                  ; Save tetroid index on the stack
     LD      B,16                ; Memory size of a tetroid sprite
-    LD      A,(SPRITE_ORIENT)   ; Load the tetroid orientation
-    LD      C,A
+    LD      C,E                 ; With the given sprite orientation
     _ADDRP  BC                  ; Param: tetroid size and orientation
     _CALL   MUL8                ; Multiply together to get the shift
     POP     BC                  ; Get the tetroid index back in BC
@@ -361,15 +412,14 @@ GET_SPRITE:
 
 
 GET_PLAYGROUND_POS:
-    LD      A,(SPRITE_ROW)       ; Load the sprite row
-    LD      B,A
+    _GETP   DE,0                ; D = row, E = col
+    LD      B,D                 ; Load the sprite row
     LD      C,PG_COLS           ; Load the number of columns in a row
     _ADDRP  BC                  ; Add the two 8 bit params
     _CALL   MUL8                ; Multiply them together
     XOR     A                   ; Set A to 0
     LD      B,A                 ; Reset B
-    LD      A,(SPRITE_COL)       ; Load the SPRITE col
-    LD      C,A
+    LD      C,E                 ; Load the SPRITE col
     ADD     HL,BC               ; Add the column to the row index
     LD      BC,PLAYGROUND       ; Load the playground address
     ADD     HL,BC               ; Add the address to the index
