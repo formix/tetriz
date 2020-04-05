@@ -34,6 +34,7 @@ SPRITE_LOC:
 SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
+RANDOM_SEED     DEFS 2
 
 
 #code _HEADER
@@ -46,7 +47,8 @@ LAST_COLOR      DEFS 1
     .PHASE  EXEC_TARGET+_PROGRAM_size
 
 WELCOME         DEFB "+++ TetriZ +++",0
-PRESS_ANY_KEY   DEFB "Press any key to reset...",0
+PRESS_RESET     DEFB "Press any key to reset",0
+PRESS_START     DEFB "Press any key to start",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "+++++",0
 
@@ -60,8 +62,18 @@ PADDING         DEFB "+++++",0
 
     _ADDLP  WELCOME
     _CALL   PRINTLN
-    CALL    NEWLINE
+    _ADDLP  PRESS_START
+    _CALL   PRINT
 
+    CALL    START_RX_INT    ;Start listening to keyboard inputs
+WAIT_KEY:
+    LD      HL,(RANDOM_SEED)
+    INC     HL
+    LD      (RANDOM_SEED),HL
+    CALL    GETCHAR
+    JR      Z,WAIT_KEY
+
+    DI
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
@@ -77,14 +89,13 @@ PADDING         DEFB "+++++",0
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
-
-    CALL    START_RX_INT    ;Start listening to keyboard inputs
+    EI
 
 
 PROGRAM_LOOP:
     ; Read the last key pressed asynchronously
     CALL    GETCHAR         ; Read the next character in the console
-    JP      Z,PROGRAM_LOOP  ; No key pressed
+    JR      Z,PROGRAM_LOOP  ; No key pressed
     LD      A,L             ; Get the character in A
 
     CP      'Q'
@@ -244,7 +255,7 @@ CAN_TRANSLATE_EXIT:
 
 
 SPRITE_DOWN:
-    _CALL   EREASE_SPRITE
+    _CALL   EREASE_SPRIgit 
     CALL    CAN_GO_DOWN
     JR      NZ,SPRITE_DOWN_EXIT
     LD      A,(SPRITE_ROW)
@@ -365,8 +376,15 @@ CHANGE_COLOR:
 
 
 SPAWN_SPRITE:
-    LD      A,3 ; shall select randomly here
-    LD      (SPRITE_INDEX),A
+    CALL    XRND                ; Generate a random number
+    LD      B,H                 ; Put that number in BC
+    LD      C,L
+    SUB     A
+    LD      D,0
+    LD      E,7                 ; Divide by 7
+    CALL    BC_DIV_BY_DE
+    LD      A,L                 ; Get the remainder
+    LD      (SPRITE_INDEX),A    ; as the sprite index
     LD      A,0
     LD      (SPRITE_ORIENT),A
     LD      A,0
@@ -477,6 +495,38 @@ GET_PLAYGROUND_POS:
     LD      BC,PLAYGROUND       ; Load the playground address
     ADD     HL,BC               ; Add the address to the index
     _RET_HL HL                  ; return the sprite positin in playground
+
+
+; 16-bit xorshift pseudorandom number generator by John Metcalf
+; 20 bytes, 86 cycles (excluding ret)
+; returns   hl = pseudorandom number
+; corrupts   a
+; generates 16-bit pseudorandom numbers with a period of 65535
+; using the xorshift method:
+; hl ^= hl << 7
+; hl ^= hl >> 9
+; hl ^= hl << 8
+; some alternative shift triplets which also perform well are:
+; 6, 7, 13; 7, 9, 13; 9, 7, 13.
+
+XRND:
+  ld hl,(RANDOM_SEED)
+  ld a,h
+  rra
+  ld a,l
+  rra
+  xor h
+  ld h,a
+  ld a,l
+  rra
+  ld a,h
+  rra
+  xor l
+  ld l,a
+  xor h
+  ld h,a
+  ld (RANDOM_SEED),hl
+  ret
 
 
 END
