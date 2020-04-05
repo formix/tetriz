@@ -26,12 +26,11 @@ PG_COLS         EQU 12
 
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
-RND_SEED        DEFS 1
 SPRITE_INDEX    DEFS 1
 SPRITE_ORIENT   DEFS 1
 SPRITE_ROW      DEFS 1
 SPRITE_COL      DEFS 1
-SCREEN_DIRTY    DEFS 1
+LAST_COLOR      DEFS 1
 
 
 #code _HEADER
@@ -63,7 +62,6 @@ PADDING         DEFB "+++++",0
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
-    CALL    INIT_PLAYGROUND
 
     _ADDLP  PADDING
     _CALL   PRINT
@@ -71,34 +69,89 @@ PADDING         DEFB "+++++",0
     _CALL   PRINT
     _ADDLP  PADDING
     _CALL   PRINTLN
+    CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
 
-
-    _ADDLP  PRESS_ANY_KEY
-    _CALL   PRINTLN
-
-
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
 
 PROGRAM_LOOP:
-    LD      HL,RND_SEED
-    INC     (HL)
-
-    LD      A,1
-    LD      HL,SCREEN_DIRTY
-    CP      (HL)
-    CALL    Z,PRINT_PLAYGROUND
-
+    ; Read the last key pressed asynchronously
     CALL    GETCHAR         ; Read the next character in the console
-    JR      Z, PROGRAM_LOOP ; Loop if no key pressed.
+    JP      Z,PROGRAM_LOOP  ; No key pressed
+    LD      A,L             ; Get the character in A
+
+    CP      'Q'
+    JP      Z,PROGRAM_EXIT  ; If Q is pressed, exit.
+
+    ; Rotate clockwise
+    CP      'w'
+    LD      B,1
+    CALL    Z,SPRITE_ROTATE
+
+    ; Rotate counter clockwise
+    CP      's'
+    LD      B,-1
+    CALL    Z,SPRITE_ROTATE
+
+    ; Move right
+    CP      'd'
+    LD      B,1
+    CALL    Z,SPRITE_TRANSLATE
+
+    ; Move left
+    CP      'a'
+    LD      B,-1
+    CALL    Z,SPRITE_TRANSLATE
+
+    ; Move down
+    CP      ' '
+    CALL    Z,SPRITE_DOWN
+
+
+    JP      PROGRAM_LOOP
+
+
+PROGRAM_EXIT:
+    LD      B,24
+    LD      C,1
+    _ADDRP  BC
+    _CALL   SET_POS
     _ADDLP  RESETTING
     _CALL   PRINTLN
-    JP      0               ;Hot reset
+    JP      0               ; Soft reset
 
+
+
+SPRITE_ROTATE:
+    _CALL   EREASE_SPRITE
+    LD      A,(SPRITE_ORIENT)
+    ADD     B
+    AND     $03                 ; Modulo 4
+    LD      (SPRITE_ORIENT),A
+    CALL   DRAW_SPRITE
+    RET
+
+
+SPRITE_TRANSLATE:
+    _CALL   EREASE_SPRITE
+    LD      A,(SPRITE_COL)
+    ADD     B
+    LD      (SPRITE_COL),A
+    CALL   DRAW_SPRITE
+    RET
+
+
+SPRITE_DOWN:
+    _CALL   EREASE_SPRITE
+    LD      A,(SPRITE_ROW)
+    INC     A
+    LD      (SPRITE_ROW),A
+    CALL   DRAW_SPRITE
+    RET
 
 
 PRINTLN:
@@ -134,7 +187,7 @@ INIT_PLAYGROUND:
     LD      C,0
     LD      HL,PLAYGROUND
 INIT_PLAYGROUND_LINE:
-    LD      A,'+' - ' '
+    LD      A,'7' - '0'
     LD      (HL),A
     INC     HL
     LD      B,10
@@ -144,7 +197,7 @@ INIT_PLAYGROUND_CELL:
     INC     HL
     DEC     B
     JR      NZ,INIT_PLAYGROUND_CELL
-    LD      A,'+' - ' '
+    LD      A,'7' - '0'
     LD      (HL),A
     INC     HL
     INC     C
@@ -153,15 +206,18 @@ INIT_PLAYGROUND_CELL:
     JR      NZ,INIT_PLAYGROUND_LINE
     LD      B,12
 INIT_PLAYGROUND_BOTTOM:
-    LD      A,'+' - ' '
+    LD      A,'7' - '0'
     LD      (HL),A
     INC     HL
     DEC     B
     JR      NZ,INIT_PLAYGROUND_BOTTOM
+    LD      A,-1
+    LD      (LAST_COLOR),A
     RET
 
 
 PRINT_PLAYGROUND:
+    DI
     LD      B,2
     LD      C,0
     _ADDRP  BC
@@ -171,7 +227,9 @@ PRINT_PLAYGROUND:
     LD      C,0
 PRINT_PLAYGROUND_CHAR
     LD      A,(HL)
-    ADD     ' '
+    ADD     '0'
+    _ADDRP  AF
+    _CALL   CHANGE_COLOR
     CALL    OUTC
     CALL    OUTC
     INC     HL
@@ -185,8 +243,23 @@ PRINT_PLAYGROUND_CHAR
     LD      B,12
     JR      PRINT_PLAYGROUND_CHAR
 PRINT_PLAYGROUND_END:
-    XOR     A                           ; Reset A to 0
-    LD      (SCREEN_DIRTY),A            ; Not dirty
+    LD      B,COLOR_BLACK
+    LD      C,COLOR_WHITE
+    _ADDRP  BC
+    _CALL   SET_COLOR
+    EI
+    RET
+
+
+CHANGE_COLOR:
+    _GETP   HL,0
+    LD      A,(LAST_COLOR)
+    CP      H
+    RET     Z
+    LD      L,H             ; Foreground and background set
+    _ADDRP  HL
+    _CALL   SET_COLOR
+    LD      (LAST_COLOR),A  ; Update last color
     RET
 
 
@@ -203,6 +276,7 @@ SPAWN_SPRITE:
 
 
 DRAW_SPRITE:
+    DI
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
     _CALL   GET_PLAYGROUND_POS  ; Get the drawing start address
@@ -213,7 +287,7 @@ DRAW_SPRITE_ROW:
     LD      C,4                 ; Number of columns of the sprite
 DRAW_SPRITE_CHAR:
     LD      A,(HL)              ; Load the first sprite byte
-    SUB     ' '                 ; Check if it is empty
+    SUB     '0'                 ; Check if it is empty
     JR      Z,DRAW_SPRITE_NEXTCHAR  ; Do not print anything if empty
     LD      (DE),A              ; Set the playground "pixel"
 DRAW_SPRITE_NEXTCHAR:
@@ -229,9 +303,42 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
-    LD      A,1
-    LD      (SCREEN_DIRTY),A    ; Set the screen dirty byte
+    EI
+    JP      PRINT_PLAYGROUND
+
+
+EREASE_SPRITE:
+    DI
+    _CALL   GET_SPRITE
+    PUSH    HL                  ; Save the sprite address on the stack
+    _CALL   GET_PLAYGROUND_POS  ; Get the drawing start address
+    EX      DE,HL               ; Put the drawing address in DE
+    POP     HL                  ; Get back the sprite address in HL
+    LD      B,4                 ; Number of rows of the sprite
+EREASE_SPRITE_ROW:
+    LD      C,4                 ; Number of columns of the sprite
+EREASE_SPRITE_CHAR:
+    LD      A,(HL)              ; Load the first sprite byte
+    SUB     '0'                 ; Check if it is empty
+    JR      Z,EREASE_SPRITE_NEXTCHAR  ; Do not print anything if empty
+    SUB     A                   ; Reset the pixel
+    LD      (DE),A              ; Set the playground "pixel"
+EREASE_SPRITE_NEXTCHAR:
+    INC     HL
+    INC     DE
+    DEC     C
+    JR      NZ,EREASE_SPRITE_CHAR ; Print the next char if not zero
+    DEC     B
+    JR      Z,EREASE_SPRITE_END   ; If last row was printed, exit
+    PUSH    BC                  ; Save counters
+    LD      BC,PG_COLS - 4      ; Get the number of byte to skip
+    _ADD_DEBC                   ; Skip to the next line
+    POP     BC                  ; Get counters back in BC
+    JR      EREASE_SPRITE_ROW     ; Print the next row
+EREASE_SPRITE_END:
+    EI
     RET
+
 
 
 GET_SPRITE:
@@ -267,34 +374,6 @@ GET_PLAYGROUND_POS:
     LD      BC,PLAYGROUND       ; Load the playground address
     ADD     HL,BC               ; Add the address to the index
     _RET_HL HL                  ; return the sprite positin in playground
-
-; ***************************************************************************
-; Multiply the two byte parameters and return the result in a word.
-;       Inputs: Param 0: the two byte values to multiply.
-;       Returns: The multiplication result in HL.
-;
-; I started implementing this myself and ended up copying that code 
-; (and comments) from a website I forgot. Quite similar to what I did, 
-; except for the stack parameters extraction. If you are the author of these
-; lines please email me and I'll give you credit here.
-; ***************************************************************************
-MUL8:
-    _GETP   DE,0
-    LD      A,D
-    LD      HL,0            ; set accumulator to 0
-    LD      D,H             ; (makes adding 'E' to 'accumulator' easier)
-MUL8_LOOP:      
-    OR      A               ; while a is not 0, then:
-    JR      Z,MUL8_END      ; we are done.
-    RRA                     ; shift A right, carrying out the bottom bit
-    JR      NC,MUL8_SKIP    ; if 1 is carried out:
-    ADD     HL,DE           ; add E to the accumulator
-MUL8_SKIP:
-    SLA     E               ; shift E to the left, shifting in 0.
-    RL      D               
-    JR      MUL8_LOOP
-MUL8_END:
-    _RET_HL HL
 
 
 END
