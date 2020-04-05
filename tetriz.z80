@@ -128,6 +128,24 @@ PROGRAM_EXIT:
     JP      0                   ; Soft reset
 
 
+; Set Z if the sprite can go down
+; Set NZ if the sprite cannot go down
+CAN_GO_DOWN:
+    PUSH    BC                  ; Required because of the pop in check_collision
+    _ADDLP  (SPRITE)            ; Add sprite index and orient as param
+    _CALL   GET_SPRITE          ; Get the future sprite in HL
+    EX      DE,HL               ; Save sprite address in DE
+    LD      A,(SPRITE_COL)
+    LD      C,A
+    LD      A,(SPRITE_ROW)
+    ADD     1                   ; Go down one row
+    LD      B,A
+    _ADDRP  BC
+    _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
+    EX      DE,HL               ; HL <- sprite address, DE <- position
+    JR      CHECK_COLLISION
+
+
 ; Set Z if translation can occur
 ; Set NZ if translation cannot occur
 CAN_TRANSLATE:
@@ -227,9 +245,12 @@ CAN_TRANSLATE_EXIT:
 
 SPRITE_DOWN:
     _CALL   EREASE_SPRITE
+    CALL    CAN_GO_DOWN
+    JR      NZ,SPRITE_DOWN_EXIT
     LD      A,(SPRITE_ROW)
     INC     A
     LD      (SPRITE_ROW),A
+SPRITE_DOWN_EXIT:
     CALL   DRAW_SPRITE
     RET
 
