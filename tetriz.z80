@@ -27,6 +27,7 @@ NULL            EQU 0
 
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
+PLAYGROUND_PRT  DEFS 1
 SPRITE:
 SPRITE_ORIENT   DEFS 1
 SPRITE_INDEX    DEFS 1
@@ -50,7 +51,7 @@ WELCOME         DEFB "+++ TetriZ +++",0
 PRESS_RESET     DEFB "Press any key to reset",0
 PRESS_START     DEFB "Press any key to start",0
 RESETTING       DEFB "Resetting...",0
-PADDING         DEFB "+++++",0
+PADDING         DEFB "     ",0
 
 #include "tetroids.z80"
 
@@ -73,19 +74,26 @@ WAIT_KEY:
     CALL    GETCHAR
     JR      Z,WAIT_KEY
 
+TETRIZ_START:
     DI
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
 
-;    _ADDLP  PADDING
-;    _CALL   PRINT
-;    _ADDLP  WELCOME
-;    _CALL   PRINT
-;    _ADDLP  PADDING
-;    _CALL   PRINTLN
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
+    LD      B,1
+    LD      C,1
+    _ADDRP  BC
+    _CALL   SET_POS
+    LD      B,COLOR_WHITE
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _CALL    SET_COLOR
+    _ADDLP  PADDING
+    _CALL   PRINT
+    _ADDLP  WELCOME
+    _CALL   PRINT
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
@@ -100,6 +108,9 @@ PROGRAM_LOOP:
 
     CP      'Q'
     JP      Z,PROGRAM_EXIT  ; If Q is pressed, exit.
+
+    CP      'r'
+    JP      Z,TETRIZ_START  ; If Q is pressed, exit.
 
     ; Rotate clockwise
     CP      'w'
@@ -332,13 +343,15 @@ INIT_PLAYGROUND_BOTTOM:
     JR      NZ,INIT_PLAYGROUND_BOTTOM
     LD      A,-1
     LD      (LAST_COLOR),A
+    SUB     A
+    LD      (PLAYGROUND_PRT),A             ;Playground not printed
     RET
 
 
 PRINT_PLAYGROUND:
     DI
-    LD      B,2
-    LD      C,0
+    LD      B,1
+    LD      C,1
     _ADDRP  BC
     _CALL   SET_POS
     LD      HL,PLAYGROUND
@@ -366,6 +379,8 @@ PRINT_PLAYGROUND_END:
     LD      C,COLOR_WHITE
     _ADDRP  BC
     _CALL   SET_COLOR
+    LD      A,1
+    LD      (PLAYGROUND_PRT),A
     EI
     RET
 
