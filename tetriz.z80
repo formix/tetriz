@@ -18,7 +18,7 @@
 #data   _HEAP,_DATA_end
 
 EXEC_TARGET     EQU $8100
-PG_ROWS         EQU 21
+PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
 
@@ -67,8 +67,9 @@ PADDING         DEFB "+++++",0
 
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 WAIT_KEY:
-    LD      HL,RANDOM_SEED
-    INC     (HL)
+    LD      HL,(RANDOM_SEED)
+    INC     HL
+    LD      (RANDOM_SEED),HL
     CALL    GETCHAR
     JR      Z,WAIT_KEY
 
@@ -77,12 +78,12 @@ WAIT_KEY:
     _CALL   SLEEP
     CALL    CLS
 
-    _ADDLP  PADDING
-    _CALL   PRINT
-    _ADDLP  WELCOME
-    _CALL   PRINT
-    _ADDLP  PADDING
-    _CALL   PRINTLN
+;    _ADDLP  PADDING
+;    _CALL   PRINT
+;    _ADDLP  WELCOME
+;    _CALL   PRINT
+;    _ADDLP  PADDING
+;    _CALL   PRINTLN
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
 
@@ -297,11 +298,18 @@ UINT_TO_STRING:
 INIT_PLAYGROUND:
     LD      C,0
     LD      HL,PLAYGROUND
+    LD      B,PG_COLS
+INIT_PLAYGROUND_TOP:
+    LD      A,'7' - '0'
+    LD      (HL),A
+    INC     HL
+    DEC     B
+    JR      NZ,INIT_PLAYGROUND_TOP
 INIT_PLAYGROUND_LINE:
     LD      A,'7' - '0'
     LD      (HL),A
     INC     HL
-    LD      B,10
+    LD      B,PG_COLS - 2
     LD      A,0
 INIT_PLAYGROUND_CELL:
     LD      (HL),A
@@ -312,10 +320,10 @@ INIT_PLAYGROUND_CELL:
     LD      (HL),A
     INC     HL
     INC     C
-    LD      A,20
+    LD      A,PG_ROWS - 2
     CP      C
     JR      NZ,INIT_PLAYGROUND_LINE
-    LD      B,12
+    LD      B,PG_COLS
 INIT_PLAYGROUND_BOTTOM:
     LD      A,'7' - '0'
     LD      (HL),A
@@ -334,7 +342,7 @@ PRINT_PLAYGROUND:
     _ADDRP  BC
     _CALL   SET_POS
     LD      HL,PLAYGROUND
-    LD      B,12
+    LD      B,PG_COLS
     LD      C,0
 PRINT_PLAYGROUND_CHAR
     LD      A,(HL)
@@ -348,10 +356,10 @@ PRINT_PLAYGROUND_CHAR
     JR      NZ,PRINT_PLAYGROUND_CHAR
     CALL    NEWLINE
     INC     C
-    LD      A,21
+    LD      A,PG_ROWS
     CP      C
     JR      Z,PRINT_PLAYGROUND_END
-    LD      B,12
+    LD      B,PG_COLS
     JR      PRINT_PLAYGROUND_CHAR
 PRINT_PLAYGROUND_END:
     LD      B,COLOR_BLACK
@@ -386,11 +394,36 @@ SPAWN_SPRITE:
     LD      (SPRITE_INDEX),A    ; as the sprite index
     LD      A,0
     LD      (SPRITE_ORIENT),A
-    LD      A,0
+    _ADDLP  (SPRITE)
+    _CALL   GET_SPRITE
+    _ADDRP  HL
+    _CALL   GET_START_ROW
+    LD      A,L
     LD      (SPRITE_ROW),A
     LD      A,4
     LD      (SPRITE_COL),A
     RET
+
+
+GET_START_ROW:
+    _GETP   HL,0
+    LD      A,'0'
+    CP      (HL)
+    JR      NZ,GET_START_ROW_ONE
+    INC     HL
+    CP      (HL)
+    JR      NZ,GET_START_ROW_ONE
+    INC     HL
+    CP      (HL)
+    JR      NZ,GET_START_ROW_ONE
+    INC     HL
+    CP      (HL)
+    JR      NZ,GET_START_ROW_ONE
+    LD      C,0
+    _RET_HL BC
+GET_START_ROW_ONE:
+    LD      C,1
+    _RET_HL BC
 
 
 DRAW_SPRITE:
