@@ -75,7 +75,7 @@ WAIT_KEY:
     JR      Z,WAIT_KEY
 
 TETRIZ_START:
-    DI
+    _DI
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
@@ -97,7 +97,7 @@ TETRIZ_START:
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
-    EI
+    _EI
 
 
 PROGRAM_LOOP:
@@ -349,7 +349,7 @@ INIT_PLAYGROUND_BOTTOM:
 
 
 PRINT_PLAYGROUND:
-    DI
+    _DI
     LD      B,1
     LD      C,1
     _ADDRP  BC
@@ -381,7 +381,7 @@ PRINT_PLAYGROUND_END:
     _CALL   SET_COLOR
     LD      A,1
     LD      (PLAYGROUND_PRT),A
-    EI
+    _EI
     RET
 
 
@@ -442,7 +442,7 @@ GET_START_ROW_ONE:
 
 
 DRAW_SPRITE:
-    DI
+    _DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -471,12 +471,12 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
-    EI
+    _EI
     JP      PRINT_PLAYGROUND
 
 
 EREASE_SPRITE:
-    DI
+    _DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -506,7 +506,7 @@ EREASE_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      EREASE_SPRITE_ROW     ; Print the next row
 EREASE_SPRITE_END:
-    EI
+    _EI
     RET
 
 

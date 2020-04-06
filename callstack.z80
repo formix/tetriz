@@ -1,6 +1,7 @@
 #if !defined(_PC)
 
 _PC             DEFL    0               ;Parameter counter
+_DI_STACK       DEFL    0
 
 
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT label.
@@ -76,32 +77,24 @@ _PC             DEFL    0
                 ENDM
 
 
-#endif
+  MACRO   _DI
+  IF      _DI_STACK == 0
+    DI
+  ENDIF
+  DEFL    _DI_STACK {_DI_STACK + 1}
+  ENDM
 
-#if !defined(_PUSH)
 
-#code           _PROGRAM_FOOTER
+  MACRO   _EI
+  DEFL    _DI_STACK {_DI_STACK - 1}
+  IF      _DI_STACK == 0
+    EI
+  ENDIF
+  ENDM
 
-;Save all registers
-_PUSH:          EX      (SP),HL
-                PUSH    DE
-                PUSH    BC
-                PUSH    AF
-                PUSH    IY
-                PUSH    IX
-                PUSH    HL
-                RET
-                        
-                        
-;Restore all registers
-_POP:           POP     HL
-                POP     IX
-                POP     IY
-                POP     AF
-                POP     BC
-                POP     DE
-                EX      (SP),HL
-                RET
+
 
 #endif
+
+
 
