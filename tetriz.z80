@@ -543,7 +543,72 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
-    JP      PRINT_PLAYGROUND
+;    JP      PRINT_PLAYGROUND
+
+
+REDRAW_SECTION:
+    DI
+    LD      B,4
+    LD      A,(SPRITE_ROW)      ; Get the sprite row
+    OR      A                   ; Check if it is zero
+    JR      Z,REDRAW_SECTION_FIRST_ROW ; on zero start dwawing
+    LD      B,5
+    DEC     A                   ; get the previous line
+    LD      D,A               
+    LD      E,PG_COLS
+    _ADDRP  DE
+    _CALL   MUL8                ; multiply the sprite row by the 
+    LD      A,L                 ; A contains the byte shift
+REDRAW_SECTION_FIRST_ROW:
+    LD      HL,PLAYGROUND
+    ADD     L
+    LD      L,A
+    LD      A,0
+    ADC     H
+    LD      H,A                 ; The playground address is now shifted
+    ;LD      B,5                 ; The number of lines to redraw
+;    LD      DE,PLAYGROUND
+;    LD      A,H
+;    CP      D
+;    JR      C,REDRAW_SECTION_FIRST_LINE
+;    LD      A,L
+;    CP      E
+;    JR      NC,REDRAW_SECTION_START
+;REDRAW_SECTION_FIRST_LINE:
+    ;LD      HL,PLAYGROUND
+REDRAW_SECTION_START:
+    PUSH    HL                  ; save the drawing pointer
+    LD      HL,(SPRITE_LOC)     ; H=row, L=col
+;    LD      A,PG_ROWS
+;    SUB     H                   ; A=A-row
+;    CP      B                   ; compare with the nimber of rows to redraw
+;    JR      NC,REDRAW_SECTION_LINE
+;    LD      B,A                 ; Load the remaining rows in the counter
+    LD      L,1
+    _ADDRP  HL
+    _CALL   SET_POS             ; Set the cursor at the right position
+    POP     HL                  ; restore the drawing pointer
+REDRAW_SECTION_LINE:            ; More than 5 rows remaining
+    LD      C,PG_COLS           ; how many columns per rows in C
+REDRAW_SECTION_CHAR:
+    LD      A,(HL)
+    ADD     '0'
+    _ADDRP  AF
+    _CALL   CHANGE_COLOR
+    CALL    OUTC
+    CALL    OUTC
+    INC     HL
+    DEC     C
+    JR      NZ,REDRAW_SECTION_CHAR
+    CALL    NEWLINE
+    DEC     B
+    JR      NZ,REDRAW_SECTION_LINE
+    LD      B,COLOR_BLACK
+    LD      C,COLOR_WHITE
+    _ADDRP  BC
+    _CALL   SET_COLOR
+    EI
+    RET
 
 
 EREASE_SPRITE:
