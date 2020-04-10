@@ -18,6 +18,7 @@
 #data   _HEAP,_DATA_end
 
 EXEC_TARGET     EQU $8100
+
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
@@ -27,7 +28,6 @@ NULL            EQU 0
 
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
-PLAYGROUND_PRT  DEFS 1
 SPRITE:
 SPRITE_ORIENT   DEFS 1
 SPRITE_INDEX    DEFS 1
@@ -53,7 +53,9 @@ PRESS_RESET     DEFB "Press any key to reset",0
 PRESS_START     DEFB "Press any key to start",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
-SCORE_TEXT      DEFB "Score: ",0
+SCORE_TEXT      DEFB "SCORE: ",0
+BOX_LINE        DEFB " *************** ",0
+GAME_OVER_TEXT  DEFB " ** GAME OVER ** ",0
 
 #include "tetroids.z80"
 
@@ -194,6 +196,23 @@ CAN_TRANSLATE:
     JR      CHECK_COLLISION
 
 
+; Set Z if new sprite can be spawn
+; Set NZ if new sprite can not be spawned
+CAN_SPAWN:
+    PUSH    BC
+    _ADDLP  (SPRITE)            ; Add sprite index and orient as param
+    _CALL   GET_SPRITE          ; Get the future sprite in HL
+    EX      DE,HL               ; Save sprite address in DE
+    LD      A,(SPRITE_COL)
+    LD      C,A
+    LD      A,(SPRITE_ROW)
+    LD      B,A
+    _ADDRP  BC
+    _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
+    EX      DE,HL               ; HL <- sprite address, DE <- position
+    JR      CHECK_COLLISION
+
+
 ; Set Z if rotation can occur
 ; Set NZ if rotation cannot occur
 CAN_ROTATE:
@@ -287,8 +306,37 @@ SPRITE_DOWN_FREEZE:
     INC     (HL)                    ; Increment the score
     CALL    PRINT_SCORE             ; Print the score
     CALL    SPAWN_SPRITE            ; Spawn a new sprite
+    CALL    CAN_SPAWN               ; Check if the new spawned sprite collides
+    JR      Z,SPRITE_DOWN_EXIT      ; Ok, we can spawn!
+    CALL    GAME_OVER               ; Collides then game over!
+    POP     HL                      ; Just dump the return address
+    JP      TETRIZ_START            ; Restart the game
 SPRITE_DOWN_EXIT:
     CALL    DRAW_SPRITE             ; Draw the sprite
+    RET
+
+
+GAME_OVER:
+    CALL    DRAW_SPRITE             ; Draw the final sprite
+    LD      B,9
+    LD      C,4
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  BOX_LINE
+    _CALL   PRINT
+    LD      B,10
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  GAME_OVER_TEXT
+    _CALL   PRINT
+    LD      B,11
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  BOX_LINE
+    _CALL   PRINT
+GAME_OVER_WAIT_KEY:
+    CALL    GETCHAR         ; Read the next character in the console
+    JR      Z,GAME_OVER_WAIT_KEY  ; No key pressed
     RET
 
 
@@ -372,8 +420,6 @@ INIT_PLAYGROUND_BOTTOM:
     JR      NZ,INIT_PLAYGROUND_BOTTOM
     LD      A,-1
     LD      (LAST_COLOR),A
-    SUB     A
-    LD      (PLAYGROUND_PRT),A             ;Playground not printed
     RET
 
 
@@ -408,8 +454,6 @@ PRINT_PLAYGROUND_END:
     LD      C,COLOR_WHITE
     _ADDRP  BC
     _CALL   SET_COLOR
-    LD      A,1
-    LD      (PLAYGROUND_PRT),A
     EI
     RET
 
@@ -430,13 +474,12 @@ SPAWN_SPRITE:
     CALL    XRND                ; Generate a random number
     LD      B,H                 ; Put that number in BC
     LD      C,L
-    SUB     A
     LD      D,0
     LD      E,7                 ; Divide by 7
     CALL    BC_DIVBY_DE
     LD      A,L                 ; Get the remainder
     LD      (SPRITE_INDEX),A    ; as the sprite index
-    LD      A,0
+    SUB     A
     LD      (SPRITE_ORIENT),A
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
