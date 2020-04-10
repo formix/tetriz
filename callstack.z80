@@ -77,23 +77,6 @@ _PC             DEFL    0
                 ENDM
 
 
-  MACRO   _DI
-  IF      _DI_STACK == 0
-    DI
-  ENDIF
-  DEFL    _DI_STACK {_DI_STACK + 1}
-  ENDM
-
-
-  MACRO   _EI
-  DEFL    _DI_STACK {_DI_STACK - 1}
-  IF      _DI_STACK == 0
-    EI
-  ENDIF
-  ENDM
-
-
-
 #endif
 
 

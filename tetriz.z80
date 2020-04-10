@@ -36,7 +36,8 @@ SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
-
+SCORE           DEFS 2
+ 
 
 #code _HEADER
     DEFB 0
@@ -52,6 +53,7 @@ PRESS_RESET     DEFB "Press any key to reset",0
 PRESS_START     DEFB "Press any key to start",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
+SCORE_TEXT      DEFB "Score: ",0
 
 #include "tetroids.z80"
 
@@ -75,7 +77,7 @@ WAIT_KEY:
     JR      Z,WAIT_KEY
 
 TETRIZ_START:
-    _DI
+    DI
     _ADDLP  1500
     _CALL   SLEEP
     CALL    CLS
@@ -97,7 +99,13 @@ TETRIZ_START:
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
-    _EI
+
+    SUB     A
+    LD      (SCORE),A
+    LD      (SCORE+1),A
+    CALL    PRINT_SCORE
+
+    EI
 
 
 PROGRAM_LOOP:
@@ -266,14 +274,35 @@ CAN_TRANSLATE_EXIT:
 
 
 SPRITE_DOWN:
-    _CALL   EREASE_SPRITE
-    CALL    CAN_GO_DOWN
-    JR      NZ,SPRITE_DOWN_EXIT
-    LD      A,(SPRITE_ROW)
+    _CALL   EREASE_SPRITE           ; Erease the sprite to allow movement
+    CALL    CAN_GO_DOWN             ; Check if can go down
+    JR      NZ,SPRITE_DOWN_FREEZE   ; Cannot go down, we freeze this sprite
+    LD      A,(SPRITE_ROW)          ; Can go down, we increment the row
     INC     A
     LD      (SPRITE_ROW),A
+    JR      SPRITE_DOWN_EXIT        ; GTFO
+SPRITE_DOWN_FREEZE:
+    CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite
+    LD      HL,SCORE                
+    INC     (HL)                    ; Increment the score
+    CALL    PRINT_SCORE             ; Print the score
+    CALL    SPAWN_SPRITE            ; Spawn a new sprite
 SPRITE_DOWN_EXIT:
-    CALL   DRAW_SPRITE
+    CALL    DRAW_SPRITE             ; Draw the sprite
+    RET
+
+
+PRINT_SCORE:
+    LD      B,2
+    LD      C,28
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  SCORE_TEXT
+    _CALL   PRINT
+    _ADDLP  (SCORE)
+    _CALL   UINT_TO_STRING
+    _ADDRP  HL
+    _CALL   PRINT
     RET
 
 
@@ -349,7 +378,7 @@ INIT_PLAYGROUND_BOTTOM:
 
 
 PRINT_PLAYGROUND:
-    _DI
+    DI
     LD      B,1
     LD      C,1
     _ADDRP  BC
@@ -381,7 +410,7 @@ PRINT_PLAYGROUND_END:
     _CALL   SET_COLOR
     LD      A,1
     LD      (PLAYGROUND_PRT),A
-    _EI
+    EI
     RET
 
 
@@ -442,7 +471,7 @@ GET_START_ROW_ONE:
 
 
 DRAW_SPRITE:
-    _DI
+    DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -471,12 +500,11 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
-    _EI
     JP      PRINT_PLAYGROUND
 
 
 EREASE_SPRITE:
-    _DI
+    DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -506,7 +534,7 @@ EREASE_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      EREASE_SPRITE_ROW     ; Print the next row
 EREASE_SPRITE_END:
-    _EI
+    EI
     RET
 
 
