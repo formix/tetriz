@@ -22,6 +22,8 @@ EXEC_TARGET     EQU $8100
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
+TRUE            EQU 1
+FALSE           EQU 0
 
 #data _HEAP
     .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
@@ -56,7 +58,7 @@ RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
 SCORE_TEXT      DEFB "SCORE: ",0
 BOX_LINE        DEFB " **************** ",0
-GAME_OVER_TEXT  DEFB " ** GAME  OVER ** ",0
+GAME_OVER_TEXT  DEFB " *  GAME  OVER  * ",0
 
 #include "tetroids.z80"
 
@@ -81,7 +83,7 @@ WAIT_KEY:
 
 TETRIZ_START:
     DI
-    _ADDLP  1500
+    _ADDLP  1500                ; Sleep 1.5 seconds before starting
     _CALL   SLEEP
     CALL    CLS
 
@@ -91,9 +93,9 @@ TETRIZ_START:
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
 
-    SUB     A
+    SUB     A                   ; Set A to 0
     LD      (SCORE),A
-    LD      (SCORE+1),A
+    LD      (SCORE+1),A         ; Clear up the score
     CALL    PRINT_SCORE
 
     EI
@@ -219,6 +221,8 @@ CAN_ROTATE:
     _ADDLP  (SPRITE_LOC)
     _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
     EX      DE,HL               ; HL <- sprite address, DE <- position
+
+
 CHECK_COLLISION:
     LD      B,4
 CHECK_COLLISION_NEXT_ROW:
@@ -293,21 +297,53 @@ SPRITE_DOWN_FREEZE:
     LD      HL,SCORE                
     INC     (HL)                    ; Increment the score
     CALL    PRINT_SCORE             ; Print the score
-    CALL    DELETE_COMPLETE_ROWS    ; Delete any complete rows if any
+    CALL    DETECT_COMPLETE_ROWS    ; Delete any complete rows if any
     CALL    SPAWN_SPRITE            ; Spawn a new sprite
     CALL    CAN_SPAWN               ; Check if the new spawned sprite collides
-    JR      Z,SPRITE_DOWN_EXIT      ; Ok, we can spawn!
-    CALL    GAME_OVER               ; Collides then game over!
-    POP     HL                      ; Just dump the return address
+    JR      Z,SPRITE_DOWN_EXIT      ; Exit if we can spawn.
+    CALL    GAME_OVER               ; Otherwise new sprite collide: game over!
+    POP     HL                      ; Dump the return address away
     JP      TETRIZ_START            ; Restart the game
 SPRITE_DOWN_EXIT:
     CALL    DRAW_SPRITE             ; Draw the sprite
     RET
 
 
-DELETE_COMPLETE_ROWS:
+DETECT_COMPLETE_ROWS:
+    LD      A,(SPRITE_ROW)
+    _ADDRP  AF
+    _CALL    IS_ROW_COMPLETE
 
     RET
+
+
+; Input:  High byte of param 0 is the row index to check
+; Output: L = 1 if complete, else L = 0
+IS_ROW_COMPLETE:
+    _GETP   BC,0                    ; Row to check in B
+    LD      C,PG_COLS
+    _ADDRP  BC      
+    _CALL   MUL8                    ; HL = B * C
+    EX      DE,HL                   ; Put playground index in DE
+    LD      HL,PLAYGROUND           ; Load the playground address in HL
+    ADD     HL,DE                   ; Shift HL to the first byte of the row
+    INC     HL                      ; Skip the left wall
+    SUB     A                       ; A = 0
+    LD      C,10                    ; The number of cells to check
+IS_ROW_COMPLETE_CHECK_CELL:
+    CP      (HL)                    ; check if (HL) == 0
+    JR      Z,IS_ROW_COMPLETE_FALSE ; If the cell is empty, not complete
+    INC     HL
+    DEC     C
+    JR      NZ,IS_ROW_COMPLETE_CHECK_CELL
+IS_ROW_COMPLETE_TRUE:
+    LD      A,TRUE
+    LD      L,A
+    _RET_HL HL
+IS_ROW_COMPLETE_FALSE:
+    LD      A,FALSE
+    LD      L,A                     ; Return row not complete
+    _RET_HL HL
 
 
 GAME_OVER:
