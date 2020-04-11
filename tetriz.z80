@@ -37,7 +37,7 @@ SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
-TIMER           DEFS 2
+SCORE           DEFS 2
 
 
 #code _HEADER
@@ -87,18 +87,6 @@ TETRIZ_START:
 
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
-    LD      B,1
-    LD      C,1
-    _ADDRP  BC
-    _CALL   SET_POS
-    LD      B,COLOR_WHITE
-    LD      C,COLOR_BLACK
-    _ADDRP  BC
-    _CALL    SET_COLOR
-    _ADDLP  PADDING
-    _CALL   PRINT
-    _ADDLP  WELCOME
-    _CALL   PRINT
 
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
@@ -114,7 +102,8 @@ TETRIZ_START:
 PROGRAM_LOOP:
     ; Read the last key pressed asynchronously
     CALL    GETCHAR         ; Read the next character in the console
-    JR      Z,PROGRAM_LOOP  ; No key pressed
+    JR      Z,PROGRAM_LOOP
+      ; No key pressed
     LD      A,L             ; Get the character in A
 
     CP      'Q'
@@ -304,6 +293,7 @@ SPRITE_DOWN_FREEZE:
     LD      HL,SCORE                
     INC     (HL)                    ; Increment the score
     CALL    PRINT_SCORE             ; Print the score
+    CALL    DELETE_COMPLETE_ROWS    ; Delete any complete rows if any
     CALL    SPAWN_SPRITE            ; Spawn a new sprite
     CALL    CAN_SPAWN               ; Check if the new spawned sprite collides
     JR      Z,SPRITE_DOWN_EXIT      ; Ok, we can spawn!
@@ -312,6 +302,11 @@ SPRITE_DOWN_FREEZE:
     JP      TETRIZ_START            ; Restart the game
 SPRITE_DOWN_EXIT:
     CALL    DRAW_SPRITE             ; Draw the sprite
+    RET
+
+
+DELETE_COMPLETE_ROWS:
+
     RET
 
 
@@ -449,6 +444,18 @@ PRINT_PLAYGROUND_CHAR
     LD      B,PG_COLS
     JR      PRINT_PLAYGROUND_CHAR
 PRINT_PLAYGROUND_END:
+    LD      B,1
+    LD      C,1
+    _ADDRP  BC
+    _CALL   SET_POS
+    LD      B,COLOR_WHITE
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _CALL    SET_COLOR
+    _ADDLP  PADDING
+    _CALL   PRINT
+    _ADDLP  WELCOME
+    _CALL   PRINT
     LD      B,COLOR_BLACK
     LD      C,COLOR_WHITE
     _ADDRP  BC
@@ -542,6 +549,7 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
+
 REDRAW_SECTION:
     DI
     LD      B,4
