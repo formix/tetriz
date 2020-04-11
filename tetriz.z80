@@ -28,6 +28,7 @@ NULL            EQU 0
 
 ITOA_BUF        DEFS 17
 PLAYGROUND      DEFS PG_ROWS * PG_COLS
+PLAYGROUND_END:
 SPRITE:
 SPRITE_ORIENT   DEFS 1
 SPRITE_INDEX    DEFS 1
@@ -37,7 +38,7 @@ SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
 SCORE           DEFS 2
- 
+
 
 #code _HEADER
     DEFB 0
@@ -54,8 +55,8 @@ PRESS_START     DEFB "Press any key to start",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
 SCORE_TEXT      DEFB "SCORE: ",0
-BOX_LINE        DEFB " *************** ",0
-GAME_OVER_TEXT  DEFB " ** GAME OVER ** ",0
+BOX_LINE        DEFB " **************** ",0
+GAME_OVER_TEXT  DEFB " ** GAME  OVER ** ",0
 
 #include "tetroids.z80"
 
@@ -543,15 +544,12 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
-;    JP      PRINT_PLAYGROUND
-
-
 REDRAW_SECTION:
     DI
     LD      B,4
     LD      A,(SPRITE_ROW)      ; Get the sprite row
     OR      A                   ; Check if it is zero
-    JR      Z,REDRAW_SECTION_FIRST_ROW ; on zero start dwawing
+    JR      Z,REDRAW_SECTION_FIRST_ROW ; on zero start drawing
     LD      B,5
     DEC     A                   ; get the previous line
     LD      D,A               
@@ -566,49 +564,54 @@ REDRAW_SECTION_FIRST_ROW:
     LD      A,0
     ADC     H
     LD      H,A                 ; The playground address is now shifted
-    ;LD      B,5                 ; The number of lines to redraw
-;    LD      DE,PLAYGROUND
-;    LD      A,H
-;    CP      D
-;    JR      C,REDRAW_SECTION_FIRST_LINE
-;    LD      A,L
-;    CP      E
-;    JR      NC,REDRAW_SECTION_START
-;REDRAW_SECTION_FIRST_LINE:
-    ;LD      HL,PLAYGROUND
 REDRAW_SECTION_START:
     PUSH    HL                  ; save the drawing pointer
     LD      HL,(SPRITE_LOC)     ; H=row, L=col
-;    LD      A,PG_ROWS
-;    SUB     H                   ; A=A-row
-;    CP      B                   ; compare with the nimber of rows to redraw
-;    JR      NC,REDRAW_SECTION_LINE
-;    LD      B,A                 ; Load the remaining rows in the counter
-    LD      L,1
-    _ADDRP  HL
-    _CALL   SET_POS             ; Set the cursor at the right position
+    LD      L,1                 ; Set the column to 1
+    _ADDRP  HL                  ; Add the row and col parameters
+    _CALL   SET_POS             ; Set the cursor at the right line
     POP     HL                  ; restore the drawing pointer
-REDRAW_SECTION_LINE:            ; More than 5 rows remaining
+REDRAW_SECTION_LINE:
     LD      C,PG_COLS           ; how many columns per rows in C
 REDRAW_SECTION_CHAR:
-    LD      A,(HL)
-    ADD     '0'
+    LD      DE,PLAYGROUND + PG_COLS
+    CALL    COMPARE_HLDE        ; Skip the first playground row
+    JR      C,REDRAW_SECTION_NEXT_CHAR
+    LD      A,(HL)              ; Loads the byte to display
+    ADD     COLOR_BLACK         ; Shift it to the color space
     _ADDRP  AF
-    _CALL   CHANGE_COLOR
+    _CALL   CHANGE_COLOR        ; Sets BG and FG using the byte to display
     CALL    OUTC
-    CALL    OUTC
-    INC     HL
+    CALL    OUTC                ; Print twice for aspect ratio
+REDRAW_SECTION_NEXT_CHAR:    
+    INC     HL                  ; move to the next char to print
+    LD      DE,PLAYGROUND_END   ; Check if HL is past the end of the playground
+    CALL    COMPARE_HLDE
+    JR      Z,REDRAW_SECTION_END ; If equal, we are done
+    LD      A,E
+    CP      L
+REDRAW_SECTION_CONTINUE:
     DEC     C
     JR      NZ,REDRAW_SECTION_CHAR
     CALL    NEWLINE
     DEC     B
     JR      NZ,REDRAW_SECTION_LINE
+REDRAW_SECTION_END:
     LD      B,COLOR_BLACK
     LD      C,COLOR_WHITE
     _ADDRP  BC
     _CALL   SET_COLOR
     EI
     RET
+
+
+COMPARE_HLDE:
+    LD      A,H
+    CP      D                   ; compare H and D
+    RET     NZ                  ; NC: HL > DE; C: HL < DE
+    LD      A,L
+    CP      E
+    RET                         ; Z,NC -> HL = DE; NZ -> same as above
 
 
 EREASE_SPRITE:
