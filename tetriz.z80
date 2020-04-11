@@ -37,7 +37,7 @@ SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
-SCORE           DEFS 2
+TIMER           DEFS 2
 
 
 #code _HEADER
@@ -50,8 +50,8 @@ SCORE           DEFS 2
     .PHASE  EXEC_TARGET+_PROGRAM_size
 
 WELCOME         DEFB "+++ TetriZ +++",0
-PRESS_RESET     DEFB "Press any key to reset",0
-PRESS_START     DEFB "Press any key to start",0
+PRESS_RESET     DEFB "Press any key to reset...",0
+PRESS_START     DEFB "Press any key to start...",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
 SCORE_TEXT      DEFB "SCORE: ",0
@@ -121,7 +121,7 @@ PROGRAM_LOOP:
     JP      Z,PROGRAM_EXIT  ; If Q is pressed, exit.
 
     CP      'r'
-    JP      Z,TETRIZ_START  ; If Q is pressed, exit.
+    JP      Z,TETRIZ_START  ; If r is pressed, restart the game.
 
     ; Rotate clockwise
     CP      'w'
@@ -230,8 +230,6 @@ CAN_ROTATE:
     _ADDLP  (SPRITE_LOC)
     _CALL   GET_PLAYGROUND_POS  ; Get the position in HL
     EX      DE,HL               ; HL <- sprite address, DE <- position
-    
-    ; check for collision
 CHECK_COLLISION:
     LD      B,4
 CHECK_COLLISION_NEXT_ROW:
