@@ -58,7 +58,8 @@ RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
 SCORE_TEXT      DEFB "SCORE: ",0
 BOX_LINE        DEFB " **************** ",0
-GAME_OVER_TEXT  DEFB " *  GAME  OVER  * ",0
+GAME_OVER_TXT   DEFB " *  GAME  OVER  * ",0
+CLEARED_ROW_TXT DEFB "####################",0
 
 #include "tetroids.z80"
 
@@ -297,7 +298,8 @@ SPRITE_DOWN_FREEZE:
     LD      HL,SCORE                
     INC     (HL)                    ; Increment the score
     CALL    PRINT_SCORE             ; Print the score
-    CALL    DETECT_COMPLETE_ROWS    ; Delete any complete rows if any
+    CALL    CLEAR_COMPLETED_ROWS    ; Delete any complete rows if any
+    LD      A,(SPRITE_ROW)          ;
     CALL    SPAWN_SPRITE            ; Spawn a new sprite
     CALL    CAN_SPAWN               ; Check if the new spawned sprite collides
     JR      Z,SPRITE_DOWN_EXIT      ; Exit if we can spawn.
@@ -309,19 +311,37 @@ SPRITE_DOWN_EXIT:
     RET
 
 
-DETECT_COMPLETE_ROWS:
+CLEAR_COMPLETED_ROWS:
+    LD      B,4
     LD      A,(SPRITE_ROW)
-    _ADDRP  AF
-    _CALL    IS_ROW_COMPLETE
-
-    RET
+    LD      C,A
+    OR      A                       ; Check if A == 0    
+    JR      NZ,CLEAR_COMPLETED_ROWS_CHECK_ROW
+    INC     C                       ; Don't check the top wall
+    DEC     B
+CLEAR_COMPLETED_ROWS_CHECK_ROW:
+    _ADDRP  BC
+    _CALL   IS_ROW_COMPLETE
+    LD      A,TRUE
+    CP      L
+    JR      NZ,CLEAR_COMPLETED_ROWS_NEXT_ROW ; If not complete, jump
+    _ADDRP  BC                      ; The row is complete
+    _CALL   CLEAR_ROW               ; Clear the row
+CLEAR_COMPLETED_ROWS_NEXT_ROW:
+    INC     C
+    DEC     B
+    RET     Z
+    LD      A,C
+    CP      PG_ROWS - 1                 
+    RET     Z                       ; Don't check the bottom wall
+    JR      CLEAR_COMPLETED_ROWS_CHECK_ROW
 
 
 ; Input:  High byte of param 0 is the row index to check
 ; Output: L = 1 if complete, else L = 0
 IS_ROW_COMPLETE:
-    _GETP   BC,0                    ; Row to check in B
-    LD      C,PG_COLS
+    _GETP   BC,0                    ; Row to check in C
+    LD      B,PG_COLS
     _ADDRP  BC      
     _CALL   MUL8                    ; HL = B * C
     EX      DE,HL                   ; Put playground index in DE
@@ -346,6 +366,36 @@ IS_ROW_COMPLETE_FALSE:
     _RET_HL HL
 
 
+CLEAR_ROW:
+    _GETP   BC,0                    ; Row to check in C
+    LD      B,PG_COLS
+    _ADDRP  BC      
+    _CALL   MUL8                    ; HL = B * C
+    EX      DE,HL                   ; Put playground index in DE
+    LD      HL,PLAYGROUND           ; Load the playground address in HL
+    ADD     HL,DE                   ; Shift HL to the first byte of the row
+    INC     HL                      ; Skip the left wall
+    SUB     A                       ; A = 0
+    LD      C,10                    ; The number of cells to check
+CLEAR_ROW_CLEAR_CELL:
+    LD      (HL),A
+    INC     HL
+    DEC     C
+    JR      NZ,CLEAR_ROW_CLEAR_CELL
+CLEAR_ROW_EXIT:
+    LD      B,COLOR_WHITE
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _CALL   SET_COLOR
+    _GETP   BC,0
+    LD      B,C
+    LD      C,3
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  (CLEARED_ROW)
+    _CALL   PRINT
+    RET
+
 GAME_OVER:
     CALL    DRAW_SPRITE             ; Draw the final sprite
     LD      B,9
@@ -357,7 +407,7 @@ GAME_OVER:
     LD      B,10
     _ADDRP  BC
     _CALL   SET_POS
-    _ADDLP  GAME_OVER_TEXT
+    _ADDLP  GAME_OVER_TXT
     _CALL   PRINT
     LD      B,11
     _ADDRP  BC
@@ -585,12 +635,12 @@ DRAW_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      DRAW_SPRITE_ROW     ; Print the next row
 DRAW_SPRITE_END:
+    LD      A,(SPRITE_ROW)      ; Get the first row of the section to redraw
+
 
 REDRAW_SECTION:
     DI
-    LD      B,4
-    LD      A,(SPRITE_ROW)      ; Get the sprite row
-    OR      A                   ; Check if it is zero
+    OR      A                   ; the row is zero
     JR      Z,REDRAW_SECTION_FIRST_ROW ; on zero start drawing
     LD      B,5
     DEC     A                   ; get the previous line

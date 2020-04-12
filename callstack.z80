@@ -1,7 +1,6 @@
 #if !defined(_PC)
 
 _PC             DEFL    0               ;Parameter counter
-_DI_STACK       DEFL    0
 
 
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT label.
@@ -14,7 +13,7 @@ _PC             DEFL    {_PC + 1}
 ;Adds a litteral 16 bits parameter to the stack then increment the
 ;_PC (parameter count) label. Register values are preserved.
                 MACRO   _ADDLP &lit
-                PUSH	HL
+                PUSH	  HL
                 LD      HL,&lit
                 EX      (SP),HL
 _PC             DEFL    {_PC + 1}
