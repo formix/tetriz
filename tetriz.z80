@@ -40,8 +40,8 @@ SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
-LINES           DEFS 2
-TETROIDS        DEFS 2
+SCORE           DEFS 2
+BRICKS          DEFS 2
 
 
 #code _HEADER
@@ -58,8 +58,8 @@ PRESS_RESET     DEFB "Press any key to reset...",0
 PRESS_START     DEFB "Press any key to start...",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
-LINES_TEXT      DEFB "LINES:     ",0
-TETROIDS_TEXT   DEFB "TETROIDS:  ",0
+SCORE_TEXT      DEFB "SCORE:     ",0
+BRICKS_TEXT     DEFB "TETROIDS:  ",0
 BOX_LINE        DEFB " **************** ",0
 GAME_OVER_TXT   DEFB " *  GAME  OVER  * ",0
 EMPTY_ROW       DEFB 0,0,0,0,0,0,0,0,0,0
@@ -91,17 +91,17 @@ TETRIZ_START:
     _CALL   SLEEP
     CALL    CLS
     SUB     A                   ; Set A to 0
-    LD      (LINES),A
-    LD      (LINES+1),A         ; Clear up the score and bricks
-    LD      (TETROIDS),A
-    LD      (TETROIDS+1),A         
+    LD      (SCORE),A
+    LD      (SCORE+1),A         ; Clear up the score and bricks
+    LD      (BRICKS),A
+    LD      (BRICKS+1),A         
     LD      BC,CLOCK_INIT
     PUSH    BC
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
-    CALL    PRINT_LINES
+    CALL    PRINT_SCORE
     EI
 
 
@@ -316,9 +316,10 @@ SPRITE_DOWN:
     JR      SPRITE_DOWN_EXIT        ; GTFO
 SPRITE_DOWN_FREEZE:
     CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite
-    LD      HL,LINES                
+    LD      HL,SCORE                
+    INC     (HL)
     CALL    CLEAR_COMPLETED_ROWS    ; Delete complete rows if any
-    CALL    PRINT_LINES             ; Print the score
+    CALL    PRINT_SCORE             ; Print the score
     LD      A,(SPRITE_ROW)          ;
     CALL    REDRAW_SECTION          ; Erease completed rows
 
@@ -362,10 +363,10 @@ CLEAR_COMPLETED_ROWS_CHECK_ROW:
     JR      NZ,CLEAR_COMPLETED_ROWS_NEXT_ROW ; If not complete, jump
     _ADDRP  BC                      ; The row is complete
     _CALL   CLEAR_ROW               ; Clear the row
-    LD      HL,(LINES)
+    LD      HL,(SCORE)
     LD      DE,10                   ; clearing a row add 10 points
     ADD     HL,DE
-    LD      (LINES),HL
+    LD      (SCORE),HL
 CLEAR_COMPLETED_ROWS_NEXT_ROW:
     INC     C
     DEC     B
@@ -564,27 +565,27 @@ GAME_OVER_WAIT_KEY:
     RET
 
 
-PRINT_LINES:
+PRINT_SCORE:
     LD      B,2
     LD      C,28
     _ADDRP  BC
     _CALL   SET_POS
-    _ADDLP  LINES_TEXT
+    _ADDLP  SCORE_TEXT
     _CALL   PRINT
-    _ADDLP  (LINES)
+    _ADDLP  (SCORE)
     _CALL   UINT_TO_STRING
     _ADDRP  HL
     _CALL   PRINT
     RET
 
-PRINT_TETROIDS:
+PRINT_BRICKS:
     LD      B,3
     LD      C,28
     _ADDRP  BC
     _CALL   SET_POS
-    _ADDLP  TETROIDS_TEXT
+    _ADDLP  BRICKS_TEXT
     _CALL   PRINT
-    _ADDLP  (TETROIDS)
+    _ADDLP  (BRICKS)
     _CALL   UINT_TO_STRING
     _ADDRP  HL
     _CALL   PRINT
@@ -736,10 +737,10 @@ SPAWN_SPRITE:
     LD      (SPRITE_ROW),A
     LD      A,4
     LD      (SPRITE_COL),A
-    LD      BC,(TETROIDS)
+    LD      BC,(BRICKS)
     INC     BC
-    LD      (TETROIDS),BC
-    CALL    PRINT_TETROIDS
+    LD      (BRICKS),BC
+    CALL    PRINT_BRICKS
     RET
 
 
