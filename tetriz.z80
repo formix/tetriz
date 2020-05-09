@@ -19,6 +19,7 @@
 
 EXEC_TARGET     EQU $8100
 
+CLOCK_INIT      EQU 5000
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
@@ -40,6 +41,7 @@ SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
 SCORE           DEFS 2
+CLOCK           DEFS 2
 
 
 #code _HEADER
@@ -99,6 +101,9 @@ TETRIZ_START:
     LD      (SCORE+1),A         ; Clear up the score
     CALL    PRINT_SCORE
 
+    LD      HL,CLOCK_INIT
+    LD      (CLOCK),HL
+
     EI
 
 
@@ -138,6 +143,10 @@ PROGRAM_LOOP:
     ; Move down
     CP      ' '
     CALL    Z,SPRITE_DOWN
+
+    ; do the clock down stuff
+    ;LD      HL,CLOCK
+    ;DEC     (HL)
 
 
     JP      PROGRAM_LOOP
@@ -342,7 +351,7 @@ CLEAR_COMPLETED_ROWS_CHECK_ROW:
     _ADDRP  BC                      ; The row is complete
     _CALL   CLEAR_ROW               ; Clear the row
     LD      HL,(SCORE)
-    LD      DE,9                    ; clearing a row add 9 points
+    LD      DE,10                   ; clearing a row add 10 points
     ADD     HL,DE
     LD      (SCORE),HL
 CLEAR_COMPLETED_ROWS_NEXT_ROW:
