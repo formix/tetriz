@@ -19,7 +19,7 @@
 
 EXEC_TARGET     EQU $8100
 
-CLOCK_INIT      EQU 5000
+CLOCK_INIT      EQU 30000
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
@@ -40,8 +40,8 @@ SPRITE_COL      DEFS 1
 SPRITE_ROW      DEFS 1
 LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
-SCORE           DEFS 2
-CLOCK           DEFS 2
+LINES           DEFS 2
+TETROIDS        DEFS 2
 
 
 #code _HEADER
@@ -58,7 +58,8 @@ PRESS_RESET     DEFB "Press any key to reset...",0
 PRESS_START     DEFB "Press any key to start...",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
-SCORE_TEXT      DEFB "SCORE: ",0
+LINES_TEXT      DEFB "LINES:     ",0
+TETROIDS_TEXT   DEFB "TETROIDS:  ",0
 BOX_LINE        DEFB " **************** ",0
 GAME_OVER_TXT   DEFB " *  GAME  OVER  * ",0
 EMPTY_ROW       DEFB 0,0,0,0,0,0,0,0,0,0
@@ -89,30 +90,25 @@ TETRIZ_START:
     _ADDLP  1500                ; Sleep 1.5 seconds before starting
     _CALL   SLEEP
     CALL    CLS
-
+    SUB     A                   ; Set A to 0
+    LD      (LINES),A
+    LD      (LINES+1),A         ; Clear up the score and bricks
+    LD      (TETROIDS),A
+    LD      (TETROIDS+1),A         
+    LD      BC,CLOCK_INIT
+    PUSH    BC
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
-
     CALL    SPAWN_SPRITE
     CALL    DRAW_SPRITE
-
-    SUB     A                   ; Set A to 0
-    LD      (SCORE),A
-    LD      (SCORE+1),A         ; Clear up the score
-    CALL    PRINT_SCORE
-
-    LD      HL,CLOCK_INIT
-    LD      (CLOCK),HL
-
+    CALL    PRINT_LINES
     EI
 
 
 PROGRAM_LOOP:
     ; Read the last key pressed asynchronously
     CALL    GETCHAR         ; Read the next character in the console
-    JR      Z,PROGRAM_LOOP
-      ; No key pressed
-    LD      A,L             ; Get the character in A
+    LD      A,L             ; Put the character in A
 
     CP      'Q'
     JP      Z,PROGRAM_EXIT  ; If Q is pressed, exit.
@@ -145,9 +141,20 @@ PROGRAM_LOOP:
     CALL    Z,SPRITE_DOWN
 
     ; do the clock down stuff
-    ;LD      HL,CLOCK
-    ;DEC     (HL)
+    POP     BC
+    DEC     BC
+    PUSH    BC
+    LD      A,B
+    OR      C
+    JP      NZ,PROGRAM_LOOP
 
+    ; *** clock down! ***
+    LD      A,' '
+    _ADDRP  AF                  ; insert a space in the console buffer
+    _CALL   PUTCHAR
+    POP     BC
+    LD      BC,CLOCK_INIT
+    PUSH    BC
 
     JP      PROGRAM_LOOP
 
@@ -270,6 +277,7 @@ CHECK_COLLISION_FREE:
 
 
 SPRITE_ROTATE:
+    DI
     _CALL   EREASE_SPRITE
     CALL    CAN_ROTATE
     JR      NZ,SPRITE_ROTATE_EXIT ; If NZ is set, cannot rotate and exit
@@ -279,10 +287,12 @@ SPRITE_ROTATE:
     LD      (SPRITE_ORIENT),A
 SPRITE_ROTATE_EXIT:
     CALL    DRAW_SPRITE
+    EI
     RET
 
 
 SPRITE_TRANSLATE:
+    DI
     _CALL   EREASE_SPRITE
     CALL    CAN_TRANSLATE
     JR      NZ,CAN_TRANSLATE_EXIT ; If NZ is set, cannot translate and exit
@@ -291,10 +301,12 @@ SPRITE_TRANSLATE:
     LD      (SPRITE_COL),A
 CAN_TRANSLATE_EXIT:    
     CALL   DRAW_SPRITE
+    EI
     RET
 
 
 SPRITE_DOWN:
+    DI
     _CALL   EREASE_SPRITE           ; Erease the sprite to allow movement
     CALL    CAN_GO_DOWN             ; Check if can go down
     JR      NZ,SPRITE_DOWN_FREEZE   ; Cannot go down, we freeze this sprite
@@ -304,10 +316,9 @@ SPRITE_DOWN:
     JR      SPRITE_DOWN_EXIT        ; GTFO
 SPRITE_DOWN_FREEZE:
     CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite
-    LD      HL,SCORE                
-    INC     (HL)                    ; Increment the score
+    LD      HL,LINES                
     CALL    CLEAR_COMPLETED_ROWS    ; Delete complete rows if any
-    CALL    PRINT_SCORE             ; Print the score
+    CALL    PRINT_LINES             ; Print the score
     LD      A,(SPRITE_ROW)          ;
     CALL    REDRAW_SECTION          ; Erease completed rows
 
@@ -331,6 +342,7 @@ SPRITE_DOWN_SPAWN:
     JP      TETRIZ_START            ; Restart the game
 SPRITE_DOWN_EXIT:
     CALL    DRAW_SPRITE             ; Draw the sprite
+    EI
     RET
 
 
@@ -350,10 +362,10 @@ CLEAR_COMPLETED_ROWS_CHECK_ROW:
     JR      NZ,CLEAR_COMPLETED_ROWS_NEXT_ROW ; If not complete, jump
     _ADDRP  BC                      ; The row is complete
     _CALL   CLEAR_ROW               ; Clear the row
-    LD      HL,(SCORE)
+    LD      HL,(LINES)
     LD      DE,10                   ; clearing a row add 10 points
     ADD     HL,DE
-    LD      (SCORE),HL
+    LD      (LINES),HL
 CLEAR_COMPLETED_ROWS_NEXT_ROW:
     INC     C
     DEC     B
@@ -374,6 +386,7 @@ FIND_GAP:
     LD      C,21
 FIND_GAP_SEARCH_EMPTY:
     DEC     C
+    JR      Z,FIND_GAP_NOT_FOUND
     CALL    IS_ROW_EMPTY
     JR      NZ,FIND_GAP_SEARCH_EMPTY
     LD      L,C             ; L = first empty row
@@ -390,6 +403,7 @@ FIND_GAP_DONE:
     SUB     A               ; set Z indicating there is a gap
     RET
 FIND_GAP_NOT_FOUND:
+    SUB     A
     ADD     1               ; set NZ indicating there is no gap
     RET
 
@@ -550,14 +564,27 @@ GAME_OVER_WAIT_KEY:
     RET
 
 
-PRINT_SCORE:
+PRINT_LINES:
     LD      B,2
     LD      C,28
     _ADDRP  BC
     _CALL   SET_POS
-    _ADDLP  SCORE_TEXT
+    _ADDLP  LINES_TEXT
     _CALL   PRINT
-    _ADDLP  (SCORE)
+    _ADDLP  (LINES)
+    _CALL   UINT_TO_STRING
+    _ADDRP  HL
+    _CALL   PRINT
+    RET
+
+PRINT_TETROIDS:
+    LD      B,3
+    LD      C,28
+    _ADDRP  BC
+    _CALL   SET_POS
+    _ADDLP  TETROIDS_TEXT
+    _CALL   PRINT
+    _ADDLP  (TETROIDS)
     _CALL   UINT_TO_STRING
     _ADDRP  HL
     _CALL   PRINT
@@ -634,7 +661,6 @@ INIT_PLAYGROUND_BOTTOM:
 
 
 PRINT_PLAYGROUND:
-    DI
     LD      B,1
     LD      C,1
     _ADDRP  BC
@@ -676,7 +702,6 @@ PRINT_PLAYGROUND_END:
     LD      C,COLOR_WHITE
     _ADDRP  BC
     _CALL   SET_COLOR
-    EI
     RET
 
 
@@ -711,6 +736,10 @@ SPAWN_SPRITE:
     LD      (SPRITE_ROW),A
     LD      A,4
     LD      (SPRITE_COL),A
+    LD      BC,(TETROIDS)
+    INC     BC
+    LD      (TETROIDS),BC
+    CALL    PRINT_TETROIDS
     RET
 
 
@@ -736,7 +765,6 @@ GET_START_ROW_ONE:
 
 
 DRAW_SPRITE:
-    DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -769,7 +797,6 @@ DRAW_SPRITE_END:
 
 
 REDRAW_SECTION:
-    DI
     OR      A                   ; the row is zero
     JR      Z,REDRAW_SECTION_FIRST_ROW ; on zero start drawing
     LD      B,5
@@ -823,7 +850,6 @@ REDRAW_SECTION_END:
     LD      C,COLOR_WHITE
     _ADDRP  BC
     _CALL   SET_COLOR
-    EI
     RET
 
 
@@ -837,7 +863,6 @@ COMPARE_HLDE:
 
 
 EREASE_SPRITE:
-    DI
     _ADDLP  (SPRITE)
     _CALL   GET_SPRITE
     PUSH    HL                  ; Save the sprite address on the stack
@@ -867,7 +892,6 @@ EREASE_SPRITE_NEXTCHAR:
     POP     BC                  ; Get counters back in BC
     JR      EREASE_SPRITE_ROW     ; Print the next row
 EREASE_SPRITE_END:
-    EI
     RET
 
 
