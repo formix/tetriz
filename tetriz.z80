@@ -297,15 +297,15 @@ SPRITE_DOWN_FREEZE:
     CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite
     LD      HL,SCORE                
     INC     (HL)                    ; Increment the score
-    CALL    PRINT_SCORE             ; Print the score
     CALL    CLEAR_COMPLETED_ROWS    ; Delete complete rows if any
+    CALL    PRINT_SCORE             ; Print the score
     LD      A,(SPRITE_ROW)          ;
     CALL    REDRAW_SECTION          ; Erease completed rows
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
     CALL    FIND_GAP
-    JR      Z,SPRITE_DOWN_SPAWN
+    JR      NZ,SPRITE_DOWN_SPAWN
     _ADDLP  500
     _CALL   SLEEP                   ; gap found, the gap is visible for 0.5 sec
     CALL    COMPACT                 ; compact the rows
@@ -341,6 +341,10 @@ CLEAR_COMPLETED_ROWS_CHECK_ROW:
     JR      NZ,CLEAR_COMPLETED_ROWS_NEXT_ROW ; If not complete, jump
     _ADDRP  BC                      ; The row is complete
     _CALL   CLEAR_ROW               ; Clear the row
+    LD      HL,(SCORE)
+    LD      DE,10
+    ADD     HL,DE
+    LD      (SCORE),HL
 CLEAR_COMPLETED_ROWS_NEXT_ROW:
     INC     C
     DEC     B
@@ -351,16 +355,48 @@ CLEAR_COMPLETED_ROWS_NEXT_ROW:
     RET
 
 
+; Return:
+;    - the top non empty row of the gap in H
+;    - the bottom empty row of the gap in L
+; Flag Z is set if there is a gap, otherwise it is unset.
+FIND_GAP:
+    LD      H,0
+    LD      L,0             ;empty row not found
+    LD      C,21
+FIND_GAP_SEARCH_EMPTY:
+    DEC     C
+    PUSH    HL
+    CALL    GET_ROW
+    CALL    IS_ROW_EMPTY
+    POP     HL
+    JR      NZ,FIND_GAP_SEARCH_EMPTY
+    LD      L,C             ; L = first empty row
+FIND_GAP_SEARCH_NOT_EMPTY:
+    DEC     C
+    JR      Z,FIND_GAP_DONE
+    PUSH    HL
+    CALL    GET_ROW
+    CALL    IS_ROW_EMPTY
+    POP     HL
+    JR      Z,FIND_GAP_SEARCH_NOT_EMPTY
+FIND_GAP_DONE:
+    SUB     A               ; A=0
+    CP      C               ; if C == 0
+    JR      Z,FIND_GAP_NOT_FOUND
+    LD      H,C             ; H = first non empty row since empty row
+    SUB     A               ; set Z indicating there is a gap
+    RET
+FIND_GAP_NOT_FOUND:
+    ADD     1               ; set NZ indicating there is no gap
+    RET
+
+
 ; Make rows from H and above fall down to row L.
 COMPACT:
+    LD      H,20
+    LD      L,10
     CALL    COPY_ROW
-    DEC     H
-    JR      NZ,COMPACT_DECL     ; if 0 or positive, decrement bottom row index
-    INC     H                   ; if negative increment back to 0
-COMPACT_DECL:
-    DEC     L
-    RET     Z                   ; if L == 0, return
-    JR      COMPACT             ; if L != 0, copy the next row 
+    RET
 
 
 ; Copy row H to row L
@@ -377,31 +413,6 @@ COPY_ROW:
     POP     HL
     RET
 
-
-; Search for a gap in the rows.
-; will be in L and the first non-empty row above in H.
-FIND_GAP:
-    LD      HL,0                ; H will store the last empty row
-                                ; L will store the first non empty row above
-    LD      C,21                ; load the line counter to the last line
-FIND_GAP_LAST_EMPTY:
-    DEC     C                   ; get the previous row
-    RET     Z                   ; if we reach row zero, we are done.
-    CALL    GET_ROW             ; set HL to the start of the line
-    CALL    IS_ROW_EMPTY        ; Z is set if line is empty
-    JR      NZ,FIND_GAP_LAST_EMPTY ; row is not empty
-    LD      L,C                 ; found the last empty row
-FIND_GAP_NON_EMPTY:
-    DEC     C                   ; go to the row above
-    JR      Z, FIND_GAP_FIRST_ROW
-    CALL    GET_ROW             ; set HL to the start of the line
-    CALL    IS_ROW_EMPTY        ; check if the row is empty
-    JR      Z,FIND_GAP_NON_EMPTY ; loop until a non empty row is found
-    LD      H,C                 ; set the first non empty row
-FIND_GAP_FIRST_ROW:
-    SUB     A
-    ADD     1                   ; first row non empty, set NZ
-    RET
 
 
 ; Sets Z if the row is empty
