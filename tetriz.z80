@@ -303,16 +303,14 @@ SPRITE_DOWN_FREEZE:
     CALL    REDRAW_SECTION          ; Erease completed rows
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
     CALL    FIND_GAP                ; search for gaps
     JR      NZ,SPRITE_DOWN_SPAWN    ; no gap, lets spawn
     CALL    COMPACT                 ; there is a gap, compact the rows
     CALL    FIND_GAP                ; there may be a second gap, look for it
     CALL    Z,COMPACT               ; compact if there is a second gap
-    _ADDLP  500
+    _ADDLP  250
     _CALL   SLEEP                   ; leave the gap is visible for 1 sec
     CALL    PRINT_PLAYGROUND        ; reprint the whole playground
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SPRITE_DOWN_SPAWN:
@@ -344,7 +342,7 @@ CLEAR_COMPLETED_ROWS_CHECK_ROW:
     _ADDRP  BC                      ; The row is complete
     _CALL   CLEAR_ROW               ; Clear the row
     LD      HL,(SCORE)
-    LD      DE,10
+    LD      DE,9                    ; clearing a row add 9 points
     ADD     HL,DE
     LD      (SCORE),HL
 CLEAR_COMPLETED_ROWS_NEXT_ROW:
