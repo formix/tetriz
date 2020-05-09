@@ -59,7 +59,7 @@ PADDING         DEFB "     ",0
 SCORE_TEXT      DEFB "SCORE: ",0
 BOX_LINE        DEFB " **************** ",0
 GAME_OVER_TXT   DEFB " *  GAME  OVER  * ",0
-CLEARED_ROW_TXT DEFB "####################",0
+EMPTY_ROW       DEFB 0,0,0,0,0,0,0,0,0,0
 
 #include "tetroids.z80"
 
@@ -298,8 +298,22 @@ SPRITE_DOWN_FREEZE:
     LD      HL,SCORE                
     INC     (HL)                    ; Increment the score
     CALL    PRINT_SCORE             ; Print the score
-    CALL    CLEAR_COMPLETED_ROWS    ; Delete any complete rows if any
+    CALL    CLEAR_COMPLETED_ROWS    ; Delete complete rows if any
     LD      A,(SPRITE_ROW)          ;
+    CALL    REDRAW_SECTION          ; Erease completed rows
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    CALL    FIND_GAP
+    JR      Z,SPRITE_DOWN_SPAWN
+    _ADDLP  500
+    _CALL   SLEEP                   ; gap found, the gap is visible for 0.5 sec
+    CALL    COMPACT                 ; compact the rows
+    CALL    PRINT_PLAYGROUND
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+SPRITE_DOWN_SPAWN:
     CALL    SPAWN_SPRITE            ; Spawn a new sprite
     CALL    CAN_SPAWN               ; Check if the new spawned sprite collides
     JR      Z,SPRITE_DOWN_EXIT      ; Exit if we can spawn.
@@ -333,8 +347,105 @@ CLEAR_COMPLETED_ROWS_NEXT_ROW:
     RET     Z
     LD      A,C
     CP      PG_ROWS - 1                 
-    RET     Z                       ; Don't check the bottom wall
-    JR      CLEAR_COMPLETED_ROWS_CHECK_ROW
+    JR      NZ,CLEAR_COMPLETED_ROWS_CHECK_ROW ;not at the floor yet
+    RET
+
+
+; Make rows from H and above fall down to row L.
+COMPACT:
+    CALL    COPY_ROW
+    DEC     H
+    JR      NZ,COMPACT_DECL     ; if 0 or positive, decrement bottom row index
+    INC     H                   ; if negative increment back to 0
+COMPACT_DECL:
+    DEC     L
+    RET     Z                   ; if L == 0, return
+    JR      COMPACT             ; if L != 0, copy the next row 
+
+
+; Copy row H to row L
+COPY_ROW:
+    PUSH    HL
+    LD      B,H                 ; save source row in B
+    LD      C,L                 ; set the GET_ROW parameter in C
+    CALL    GET_ROW             ; get the target row in HL
+    EX      DE,HL               ; put the target row in DE
+    LD      C,B                 ; set the GET_ROW parameter in C
+    CALL    GET_ROW             ; get source row in HL
+    LD      BC,10               ; the number of blocks to copy
+    LDIR                        ; execute the copy until BC == 0
+    POP     HL
+    RET
+
+
+; Search for a gap in the rows.
+; will be in L and the first non-empty row above in H.
+FIND_GAP:
+    LD      HL,0                ; H will store the last empty row
+                                ; L will store the first non empty row above
+    LD      C,21                ; load the line counter to the last line
+FIND_GAP_LAST_EMPTY:
+    DEC     C                   ; get the previous row
+    RET     Z                   ; if we reach row zero, we are done.
+    CALL    GET_ROW             ; set HL to the start of the line
+    CALL    IS_ROW_EMPTY        ; Z is set if line is empty
+    JR      NZ,FIND_GAP_LAST_EMPTY ; row is not empty
+    LD      L,C                 ; found the last empty row
+FIND_GAP_NON_EMPTY:
+    DEC     C                   ; go to the row above
+    JR      Z, FIND_GAP_FIRST_ROW
+    CALL    GET_ROW             ; set HL to the start of the line
+    CALL    IS_ROW_EMPTY        ; check if the row is empty
+    JR      Z,FIND_GAP_NON_EMPTY ; loop until a non empty row is found
+    LD      H,C                 ; set the first non empty row
+FIND_GAP_FIRST_ROW:
+    SUB     A
+    ADD     1                   ; first row non empty, set NZ
+    RET
+
+
+; Sets Z if the row is empty
+; AF are not preserved
+IS_ROW_EMPTY:
+    PUSH    HL
+    PUSH    BC
+    LD      C,10                ; there is 10 columns to check
+    SUB     A                   ; clear A
+IS_ROW_EMPTY_COMPARE:
+    CP      (HL)                ; check if the byte is null
+    JR      NZ,IS_ROW_EMPTY_EXIT ; not null, return
+    INC     HL                  ; move to the tetris block cell
+    DEC     C                   ; one less column to check
+    JR      NZ,IS_ROW_EMPTY_COMPARE ; did we reach the last column?
+IS_ROW_EMPTY_EXIT:
+    POP     BC                  ; restore registers
+    POP     HL                  
+    RET                         ; gtfo
+
+
+; Converts C line number to the start of the matching line in the playground.
+; Returns the line address in HL
+; If the requested row number is 0, returns the EMPTY_ROW address instead.
+GET_ROW:
+    PUSH    AF
+    PUSH    BC
+    SUB     A                   ; A = 0
+    CP      C                   ; check if C == 0
+    JR      Z,GET_ROW_EMPTY_ROW ; If the requested row is 0, return the empty row
+    LD      B,PG_COLS           ; loads the number of cols per rows in B
+    _ADDRP  BC                  ; add BC to the parameter stack
+    _CALL   MUL8                ; HL = B * C
+    LD      BC,PLAYGROUND       ; sets BC to the playground address
+    ADD     HL,BC               ; add the start address to HL
+    INC     HL                  ; skip the left wall byte
+    JR      GET_ROW_EXIT
+GET_ROW_EMPTY_ROW:
+    LD      HL,EMPTY_ROW        ; set the returned value to the empty row
+GET_ROW_EXIT:
+    POP     BC
+    POP     AF
+    RET                         ; gtfo
+
 
 
 ; Input:  High byte of param 0 is the row index to check
@@ -383,17 +494,6 @@ CLEAR_ROW_CLEAR_CELL:
     DEC     C
     JR      NZ,CLEAR_ROW_CLEAR_CELL
 CLEAR_ROW_EXIT:
-    LD      B,COLOR_WHITE
-    LD      C,COLOR_BLACK
-    _ADDRP  BC
-    _CALL   SET_COLOR
-    _GETP   BC,0
-    LD      B,C
-    LD      C,3
-    _ADDRP  BC
-    _CALL   SET_POS
-    _ADDLP  (CLEARED_ROW)
-    _CALL   PRINT
     RET
 
 GAME_OVER:
