@@ -304,12 +304,14 @@ SPRITE_DOWN_FREEZE:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    CALL    FIND_GAP
-    JR      NZ,SPRITE_DOWN_SPAWN
+    CALL    FIND_GAP                ; search for gaps
+    JR      NZ,SPRITE_DOWN_SPAWN    ; no gap, lets spawn
+    CALL    COMPACT                 ; there is a gap, compact the rows
+    CALL    FIND_GAP                ; there may be a second gap, look for it
+    CALL    Z,COMPACT               ; compact if there is a second gap
     _ADDLP  500
-    _CALL   SLEEP                   ; gap found, the gap is visible for 0.5 sec
-    CALL    COMPACT                 ; compact the rows
-    CALL    PRINT_PLAYGROUND
+    _CALL   SLEEP                   ; leave the gap is visible for 1 sec
+    CALL    PRINT_PLAYGROUND        ; reprint the whole playground
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -365,19 +367,13 @@ FIND_GAP:
     LD      C,21
 FIND_GAP_SEARCH_EMPTY:
     DEC     C
-    PUSH    HL
-    CALL    GET_ROW
     CALL    IS_ROW_EMPTY
-    POP     HL
     JR      NZ,FIND_GAP_SEARCH_EMPTY
     LD      L,C             ; L = first empty row
 FIND_GAP_SEARCH_NOT_EMPTY:
     DEC     C
     JR      Z,FIND_GAP_DONE
-    PUSH    HL
-    CALL    GET_ROW
     CALL    IS_ROW_EMPTY
-    POP     HL
     JR      Z,FIND_GAP_SEARCH_NOT_EMPTY
 FIND_GAP_DONE:
     SUB     A               ; A=0
@@ -393,11 +389,27 @@ FIND_GAP_NOT_FOUND:
 
 ; Make rows from H and above fall down to row L.
 COMPACT:
-    LD      H,20
-    LD      L,10
+    CALL    COPY_ROW            ; copy row H into row L
+    DEC     L                   ; move up one row
+    DEC     H                   
+    LD      C,H
+    CALL    IS_ROW_EMPTY
+    JR      Z,COMPACT_DONE
+    CALL    COPY_ROW
+    JR      COMPACT
+COMPACT_DONE:
     CALL    COPY_ROW
     RET
 
+
+; Check if the row in C is empty
+; Flag Z is set if empty, otherwise it is unset.
+IS_ROW_EMPTY:
+    PUSH    HL
+    CALL    GET_ROW
+    CALL    IS_NULL_10
+    POP     HL
+    RET
 
 ; Copy row H to row L
 COPY_ROW:
@@ -415,20 +427,20 @@ COPY_ROW:
 
 
 
-; Sets Z if the row is empty
-; AF are not preserved
-IS_ROW_EMPTY:
+; Sets Z if HL contains 10 consecutive null values.
+; AF is not preserved
+IS_NULL_10:
     PUSH    HL
     PUSH    BC
     LD      C,10                ; there is 10 columns to check
     SUB     A                   ; clear A
-IS_ROW_EMPTY_COMPARE:
+IS_NULL_10_COMPARE:
     CP      (HL)                ; check if the byte is null
-    JR      NZ,IS_ROW_EMPTY_EXIT ; not null, return
+    JR      NZ,IS_NULL_10_EXIT ; not null, return
     INC     HL                  ; move to the tetris block cell
     DEC     C                   ; one less column to check
-    JR      NZ,IS_ROW_EMPTY_COMPARE ; did we reach the last column?
-IS_ROW_EMPTY_EXIT:
+    JR      NZ,IS_NULL_10_COMPARE ; did we reach the last column?
+IS_NULL_10_EXIT:
     POP     BC                  ; restore registers
     POP     HL                  
     RET                         ; gtfo
