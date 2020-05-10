@@ -20,6 +20,8 @@
 EXEC_TARGET     EQU $8100
 
 CLOCK_INIT      EQU 30000
+CLOCK_DOWN_RATE EQU 1000
+CLOCK_MIN       EQU 1000
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
@@ -42,6 +44,7 @@ LAST_COLOR      DEFS 1
 RANDOM_SEED     DEFS 2
 SCORE           DEFS 2
 BRICKS          DEFS 2
+CLOCK           DEFS 2
 
 
 #code _HEADER
@@ -90,13 +93,10 @@ TETRIZ_START:
     _ADDLP  1500                ; Sleep 1.5 seconds before starting
     _CALL   SLEEP
     CALL    CLS
-    SUB     A                   ; Set A to 0
-    LD      (SCORE),A
-    LD      (SCORE+1),A         ; Clear up the score and bricks
-    LD      (BRICKS),A
-    LD      (BRICKS+1),A         
-    LD      BC,CLOCK_INIT
-    PUSH    BC
+    LD      HL,0
+    LD      (SCORE),HL          ; Clear up the score and bricks
+    LD      (BRICKS),HL
+    CALL    RESET_CLOCK
     CALL    INIT_PLAYGROUND
     CALL    PRINT_PLAYGROUND
     CALL    SPAWN_SPRITE
@@ -140,21 +140,8 @@ PROGRAM_LOOP:
     CP      ' '
     CALL    Z,SPRITE_DOWN
 
-    ; do the clock down stuff
-    POP     BC
-    DEC     BC
-    PUSH    BC
-    LD      A,B
-    OR      C
-    JP      NZ,PROGRAM_LOOP
-
-    ; *** clock down! ***
-    LD      A,' '
-    _ADDRP  AF                  ; insert a space in the console buffer
-    _CALL   PUTCHAR
-    POP     BC
-    LD      BC,CLOCK_INIT
-    PUSH    BC
+    ; decrement the clock and move the tetroid down if counter reached 0.
+    CALL    CLOCK_DOWN
 
     JP      PROGRAM_LOOP
 
@@ -167,6 +154,50 @@ PROGRAM_EXIT:
     _ADDLP  RESETTING
     _CALL   PRINTLN
     JP      0                   ; Soft reset
+
+; Decrement the clock and exit if the clock did not reach zero.
+; If the clock reaches zero, push a ' ' (down) into the console buffer
+; and reset the clock.
+; Clock reset goes by the following logic: 
+;           CLOCK = CLOCK_INIT - BLOCKS * CLOCK_DOWN_RATE
+; If clock is below CLOCK_MIN, set clock to CLOCK_MIN.
+CLOCK_DOWN:
+    LD      BC,(CLOCK)
+    DEC     BC
+    LD      (CLOCK),BC      ; Clock is decremented and saved back in RAM
+    LD      A,B
+    OR      C
+    RET     NZ              ; Exit if the clock is not zero
+    LD      A,' '           ; Else, insert a space to move the tetroid down
+    _ADDRP  AF  
+    _CALL   PUTCHAR
+    CALL    RESET_CLOCK     ; and reset the clock
+    RET
+
+
+RESET_CLOCK:
+    LD      BC,(BRICKS)
+    LD      DE,CLOCK_DOWN_RATE
+    CALL    MUL16           ; SPEEDUP(HL) = BRICKS(BC) * CLOCK_DOWN_RATE(DE)
+    LD      DE,CLOCK_INIT   ; get the initialization value in DE
+    EX      DE,HL           ; HL = CLOCK_INIT; DE = SPEEDUP
+    SBC     HL,DE           ; CLOCK(HL) = CLOCK_INIT(HL) - SPEEDUP(DE)
+    LD      DE,CLOCK_MIN    ; check if lower than the minimum value
+    LD      A,D             
+    CP      H
+    JR      Z,RESET_CLOCK_CHECK_L ; if result is positive then exit
+    JR      NC,RESET_CLOCK_EXIT ; if result is positive then exit
+RESET_CLOCK_CHECK_L:
+    LD      A,E
+    CP      L
+    JR      Z,RESET_CLOCK_SET_MIN ; if result is positive then exit
+    JR      NC,RESET_CLOCK_EXIT ; if result is positive then exit
+RESET_CLOCK_SET_MIN:
+    LD      HL,CLOCK_MIN        ; else, set the min clock value to 0
+RESET_CLOCK_EXIT:
+    LD      (CLOCK),HL      ; save the new clock value
+    RET
+
 
 
 ; Set Z if the sprite can go down
