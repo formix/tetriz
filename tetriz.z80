@@ -19,7 +19,7 @@
 
 EXEC_TARGET     EQU $8100
 
-CLOCK_INIT      EQU 30000
+CLOCK_INIT      EQU 29999
 CLOCK_DOWN_RATE EQU 250
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
@@ -44,6 +44,7 @@ RANDOM_SEED     DEFS 2
 SCORE           DEFS 2
 BRICKS          DEFS 2
 CLOCK           DEFS 2
+MAX_LEVEL       DEFS 1
 
 
 #code _HEADER
@@ -92,6 +93,8 @@ TETRIZ_START:
     _ADDLP  1500                ; Sleep 1.5 seconds before starting
     _CALL   SLEEP
     CALL    CLS
+    SUB     A
+    LD      (MAX_LEVEL),A
     LD      HL,0
     LD      (SCORE),HL          ; Clear up the score and bricks
     LD      (BRICKS),HL
@@ -175,6 +178,9 @@ CLOCK_DOWN:
 
 
 RESET_CLOCK:
+    LD      A,(MAX_LEVEL)
+    OR      A
+    JR      NZ,RESET_CLOCK_MAX_LEVEL
     LD      BC,(BRICKS)
     LD      DE,CLOCK_DOWN_RATE
     CALL    MUL16           ; SPEEDUP(HL) = BRICKS(BC) * CLOCK_DOWN_RATE(DE)
@@ -183,6 +189,9 @@ RESET_CLOCK:
     OR      A               ; Clear Z and C
     SBC     HL,DE           ; CLOCK(HL) = CLOCK_INIT(HL) - SPEEDUP(DE)
     JR      NC,RESET_CLOCK_EXIT
+    LD      A,1
+    LD      (MAX_LEVEL),A
+RESET_CLOCK_MAX_LEVEL:
     LD      HL,CLOCK_DOWN_RATE ; else, set the min clock value to 0
 RESET_CLOCK_EXIT:
     LD      (CLOCK),HL      ; save the new clock value
