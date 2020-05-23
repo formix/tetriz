@@ -20,8 +20,7 @@
 EXEC_TARGET     EQU $8100
 
 CLOCK_INIT      EQU 30000
-CLOCK_DOWN_RATE EQU 1000
-CLOCK_MIN       EQU 1000
+CLOCK_DOWN_RATE EQU 250
 PG_ROWS         EQU 22
 PG_COLS         EQU 12
 NULL            EQU 0
@@ -171,7 +170,7 @@ CLOCK_DOWN:
     LD      A,' '           ; Else, insert a space to move the tetroid down
     _ADDRP  AF  
     _CALL   PUTCHAR
-    CALL    RESET_CLOCK     ; and reset the clock
+    JR      RESET_CLOCK     ; and reset the clock
     RET
 
 
@@ -181,19 +180,10 @@ RESET_CLOCK:
     CALL    MUL16           ; SPEEDUP(HL) = BRICKS(BC) * CLOCK_DOWN_RATE(DE)
     LD      DE,CLOCK_INIT   ; get the initialization value in DE
     EX      DE,HL           ; HL = CLOCK_INIT; DE = SPEEDUP
+    OR      A               ; Clear Z and C
     SBC     HL,DE           ; CLOCK(HL) = CLOCK_INIT(HL) - SPEEDUP(DE)
-    LD      DE,CLOCK_MIN    ; check if lower than the minimum value
-    LD      A,D             
-    CP      H
-    JR      Z,RESET_CLOCK_CHECK_L ; if result is positive then exit
-    JR      NC,RESET_CLOCK_EXIT ; if result is positive then exit
-RESET_CLOCK_CHECK_L:
-    LD      A,E
-    CP      L
-    JR      Z,RESET_CLOCK_SET_MIN ; if result is positive then exit
-    JR      NC,RESET_CLOCK_EXIT ; if result is positive then exit
-RESET_CLOCK_SET_MIN:
-    LD      HL,CLOCK_MIN        ; else, set the min clock value to 0
+    JR      NC,RESET_CLOCK_EXIT
+    LD      HL,CLOCK_DOWN_RATE ; else, set the min clock value to 0
 RESET_CLOCK_EXIT:
     LD      (CLOCK),HL      ; save the new clock value
     RET
