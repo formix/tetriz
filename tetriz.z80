@@ -170,6 +170,12 @@ SPRITE_FALL:
     JR      NZ,SPRITE_FALL
     RET
 
+RESET_CONSOLE_BUFFER:
+    LD      HL,(BUFFER_HEAD)
+    LD      (BUFFER_TAIL),HL
+    LD      HL,BUFFER_STATE
+    LD      (HL),BUFFER_EMPTY
+    RET
 
 
 ; Decrement the clock and exit if the clock did not reach zero.
@@ -189,7 +195,6 @@ CLOCK_DOWN:
     _ADDRP  AF  
     _CALL   PUTCHAR
     JR      RESET_CLOCK     ; and reset the clock
-    RET
 
 
 RESET_CLOCK:
@@ -363,6 +368,7 @@ SPRITE_DOWN:
     LD      (SPRITE_ROW),A
     JR      SPRITE_DOWN_EXIT        ; GTFO
 SPRITE_DOWN_FREEZE:
+    CALL    RESET_CONSOLE_BUFFER    ; Make sure the console buffer is reset.
     LD      A,0
     LD      (SPRITE_DOWN_OK),A      ; Sprite did not go down and is frozen
     CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite

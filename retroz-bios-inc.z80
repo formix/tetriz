@@ -44,3 +44,8 @@ SLEEP                           EQU     $01B7
 START_RX_INT                    EQU     $00B3
 STOP_RX_INT                     EQU     $00BC
 TOHEX                           EQU     $066D
+
+BUFFER_EMPTY                    EQU     $0040
+BUFFER_HEAD                     EQU     $8040
+BUFFER_TAIL                     EQU     $8042
+BUFFER_STATE                    EQU     $8044
