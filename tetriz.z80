@@ -26,6 +26,7 @@ PG_COLS         EQU 12
 NULL            EQU 0
 TRUE            EQU 1
 FALSE           EQU 0
+MOVE_DOWN_CHAR  EQU 'n'
 
 #data _HEAP
     .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
@@ -61,8 +62,8 @@ PRESS_RESET     DEFB "Press any key to reset...",0
 PRESS_START     DEFB "Press any key to start...",0
 RESETTING       DEFB "Resetting...",0
 PADDING         DEFB "     ",0
-SCORE_TEXT      DEFB "SCORE:     ",0
-BRICKS_TEXT     DEFB "TETROIDS:  ",0
+SCORE_TEXT      DEFB "     SCORE: ",0
+BRICKS_TEXT     DEFB "TETROMINOS: ",0
 BOX_LINE        DEFB " **************** ",0
 GAME_OVER_TXT   DEFB " *  GAME  OVER  * ",0
 EMPTY_ROW       DEFB 0,0,0,0,0,0,0,0,0,0
@@ -138,8 +139,12 @@ PROGRAM_LOOP:
     LD      B,-1
     CALL    Z,SPRITE_TRANSLATE
 
-    ; Move down
+    ; Fall down
     CP      ' '
+    CALL    Z,SPRITE_FALL
+
+    ; Move down
+    CP      MOVE_DOWN_CHAR
     CALL    Z,SPRITE_DOWN
 
     ; decrement the clock and move the tetroid down if counter reached 0.
@@ -157,6 +162,16 @@ PROGRAM_EXIT:
     _CALL   PRINTLN
     JP      0                   ; Soft reset
 
+
+
+; Make the sprite fall down in place.
+SPRITE_FALL:
+    CALL    SPRITE_DOWN
+    JR      NZ,SPRITE_FALL
+    RET
+
+
+
 ; Decrement the clock and exit if the clock did not reach zero.
 ; If the clock reaches zero, push a ' ' (down) into the console buffer
 ; and reset the clock.
@@ -170,7 +185,7 @@ CLOCK_DOWN:
     LD      A,B
     OR      C
     RET     NZ              ; Exit if the clock is not zero
-    LD      A,' '           ; Else, insert a space to move the tetroid down
+    LD      A,MOVE_DOWN_CHAR; Else, insert a move down character
     _ADDRP  AF  
     _CALL   PUTCHAR
     JR      RESET_CLOCK     ; and reset the clock
@@ -335,8 +350,11 @@ CAN_TRANSLATE_EXIT:
     RET
 
 
+SPRITE_DOWN_OK      DEFB 0          ; Tells if the sprite moved down
 SPRITE_DOWN:
     DI
+    LD      A,1
+    LD      (SPRITE_DOWN_OK),A      ; Assumes the sprite will go down.
     _CALL   EREASE_SPRITE           ; Erease the sprite to allow movement
     CALL    CAN_GO_DOWN             ; Check if can go down
     JR      NZ,SPRITE_DOWN_FREEZE   ; Cannot go down, we freeze this sprite
@@ -345,6 +363,8 @@ SPRITE_DOWN:
     LD      (SPRITE_ROW),A
     JR      SPRITE_DOWN_EXIT        ; GTFO
 SPRITE_DOWN_FREEZE:
+    LD      A,0
+    LD      (SPRITE_DOWN_OK),A      ; Sprite did not go down and is frozen
     CALL    DRAW_SPRITE             ; Cannot go down, redraw the sprite
     LD      HL,SCORE                
     INC     (HL)
@@ -373,6 +393,8 @@ SPRITE_DOWN_SPAWN:
     JP      TETRIZ_START            ; Restart the game
 SPRITE_DOWN_EXIT:
     CALL    DRAW_SPRITE             ; Draw the sprite
+    LD      A,(SPRITE_DOWN_OK)      ; Check if sprite went down
+    OR      A                       ; Z is set if sprite did not go down
     EI
     RET
 
