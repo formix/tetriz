@@ -170,6 +170,7 @@ SPRITE_FALL:
     JR      NZ,SPRITE_FALL
     RET
 
+
 RESET_CONSOLE_BUFFER:
     LD      HL,(BUFFER_HEAD)
     LD      (BUFFER_TAIL),HL
@@ -194,7 +195,7 @@ CLOCK_DOWN:
     LD      A,MOVE_DOWN_CHAR; Else, insert a move down character
     _ADDRP  AF  
     _CALL   PUTCHAR
-    JR      RESET_CLOCK     ; and reset the clock
+;    JR      RESET_CLOCK     ; and reset the clock
 
 
 RESET_CLOCK:
@@ -470,15 +471,19 @@ FIND_GAP_NOT_FOUND:
 ; Make rows from H and above fall down to row L.
 COMPACT:
     CALL    COPY_ROW            ; copy row H into row L
+    CALL    EREASE_ROW_H
+COMPACT_CONTINUE:
     DEC     L                   ; move up one row
     DEC     H                   
     LD      C,H
     CALL    IS_ROW_EMPTY
     JR      Z,COMPACT_DONE
     CALL    COPY_ROW
-    JR      COMPACT
+    CALL    EREASE_ROW_H
+    JR      COMPACT_CONTINUE
 COMPACT_DONE:
     CALL    COPY_ROW
+    CALL    EREASE_ROW_H
     RET
 
 
@@ -502,10 +507,22 @@ COPY_ROW:
     CALL    GET_ROW             ; get source row in HL
     LD      BC,10               ; the number of blocks to copy
     LDIR                        ; execute the copy until BC == 0
+    LD      HL,EMPTY_ROW
+    LD      BC,10
     POP     HL
     RET
 
-
+; Erease row in H
+EREASE_ROW_H:
+    PUSH    HL
+    LD      C,H
+    CALL    GET_ROW
+    EX      DE,HL
+    LD      HL,EMPTY_ROW
+    LD      BC,10
+    LDIR
+    POP     HL
+    RET
 
 ; Sets Z if HL contains 10 consecutive null values.
 ; AF is not preserved
@@ -1018,6 +1035,10 @@ XRND:
   ld h,a
   ld (RANDOM_SEED),hl
   ret
+
+
+
+#include "bool.z80"
 
 
 END
