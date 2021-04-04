@@ -28,6 +28,11 @@ TRUE            EQU 1
 FALSE           EQU 0
 MOVE_DOWN_CHAR  EQU 'n'
 
+#code _HEADER
+    DEFB 0
+    DEFW _PROGRAM_size+_DATA_size
+    DEFW EXEC_TARGET
+
 #data _HEAP
     .PHASE  EXEC_TARGET+_PROGRAM_size+_DATA_size
 
@@ -46,12 +51,6 @@ SCORE           DEFS 2
 BRICKS          DEFS 2
 CLOCK           DEFS 2
 MAX_LEVEL       DEFS 1
-
-
-#code _HEADER
-    DEFB 0
-    DEFW _PROGRAM_size+_DATA_size
-    DEFW EXEC_TARGET
 
 
 #code _DATA
