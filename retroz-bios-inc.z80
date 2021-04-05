@@ -1,3 +1,5 @@
+#if !defined(ATTR_BLINK)
+
 ; +++ global symbols +++
 
 ATTR_BLINK                      EQU     $0035
@@ -18,9 +20,9 @@ COLOR_RED                       EQU     $0031
 COLOR_WHITE                     EQU     $0037
 COLOR_YELLOW                    EQU     $0033
 DIV16                           EQU     $02B0
-DRAW_LINE                       EQU     $03F5
-DRAW_RECT                       EQU     $0470
-DRAW_ROW                        EQU     $0431
+;DRAW_LINE                       EQU     $03F5
+;DRAW_RECT                       EQU     $0470
+;DRAW_ROW                        EQU     $0431
 ESC                             EQU     $001B
 GETCHAR                         EQU     $0170
 INPC                            EQU     $00F4
@@ -29,6 +31,7 @@ MEMDUMP                         EQU     $0562
 MUL16                           EQU     $01FF
 MUL8                            EQU     $01D4
 MUL_BC_DE_DEHL                  EQU     $01FF
+OUTA                            EQU     $00DE
 OUTC                            EQU     $00DE
 _POP                            EQU     $06B9
 PRINT_ENDL                      EQU     $0165
@@ -37,7 +40,7 @@ _PUSH                           EQU     $06AF
 PUTCHAR                         EQU     $011C
 RTS_OFF                         EQU     $00A1
 RTS_ON                          EQU     $00AA
-SET_ATTRIBUTE                   EQU     $0354
+;SET_ATTRIBUTE                   EQU     $0354
 SET_COLOR                       EQU     $0321
 SET_POS                         EQU     $0374
 SLEEP                           EQU     $01B7
@@ -49,3 +52,5 @@ BUFFER_EMPTY                    EQU     $0040
 BUFFER_HEAD                     EQU     $8040
 BUFFER_TAIL                     EQU     $8042
 BUFFER_STATE                    EQU     $8044
+
+#endif
