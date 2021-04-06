@@ -1,7 +1,6 @@
 #target bin
 
 #include "retroz-bios-inc.z80"
-#include "callstack.z80"
 
 
     MACRO _ADD_DEBC
@@ -169,12 +168,10 @@ SPRITE_FALL:
     JR      NZ,SPRITE_FALL
     RET
 
-
+BUFFER_LENGTH   EQU     $8042
 RESET_CONSOLE_BUFFER:
-    LD      HL,(BUFFER_HEAD)
-    LD      (BUFFER_TAIL),HL
-    LD      HL,BUFFER_STATE
-    LD      (HL),BUFFER_EMPTY
+    LD      HL,0
+    LD      (BUFFER_LENGTH),HL
     RET
 
 
@@ -1035,9 +1032,6 @@ XRND:
   ld (RANDOM_SEED),hl
   ret
 
-
-
-#include "bool.z80"
 
 
 END
