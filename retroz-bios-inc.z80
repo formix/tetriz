@@ -89,43 +89,53 @@ _PC             DEFL    0
     macro _and
     ; L = H && L
     ; Z matches the boolean value of L.
+    ex      af,af'
     ld      a,l         ; prepare the operation
     and     h           ; with h
     ld      l,a         ; get the result in l
+    ex      af,af'
     endm
 
     macro _or
     ; L = H || L
     ; Z matches the boolean value of L.
+    ex      af,af'
     ld      a,l         ; prepare the operation
     or      h           ; with h
     ld      l,a         ; get the result in l
+    ex      af,af'
     endm
 
 
     macro _xor
     ; L = H ^ L
     ; Z matches the boolean value of L.
+    ex      af,af'
     ld      a,l         ; prepare the operation
     xor     h           ; with h
     ld      l,a         ; get the result in l
+    ex      af,af'
     endm
 
 
     macro _not
     ; L = !L
     ; Z matches the boolean value of L.
+    ex      af,af'
     ld      a,1         ; prepare the operation
     xor     l           ; A = !L (XOR with 1 inverts the value)
     ld      l,a         ; get the result in l
+    ex      af,af'
     endm
 
 
-    macro _yes
+    macro _istrue
     ; L is unchanged
     ; Z matches the boolean value of L.
+    ex      af,af'
     ld      a,l         ; prepare the operation
     or      a           ; Set or reset Z based on L content
+    ex      af,af'
     endm
 
 
@@ -162,7 +172,7 @@ eq32                            EQU     $0767
 eq8                             EQU     $0704
 ESC                             EQU     $001B
 FALSE                           EQU     $0000
-GETCHAR                         EQU     $018A
+;GETCHAR                         EQU     $018A
 gt16                            EQU     $0744
 gt32                            EQU     $07A5
 gt8                             EQU     $0714
@@ -191,7 +201,7 @@ _POP                            EQU     $06FA
 PRINT_ENDL                      EQU     $01CD
 PRINT                           EQU     $01E3
 _PUSH                           EQU     $06F0
-PUTCHAR                         EQU     $0160
+;PUTCHAR                         EQU     $0160
 RTS_OFF                         EQU     $00A1
 RTS_ON                          EQU     $00AA
 save32                          EQU     $0802

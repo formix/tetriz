@@ -9,6 +9,7 @@ TARGET_ADDR EQU $8100
 #code   _PROGRAM_FOOTER
 #code   _DATA, TARGET_ADDR + _PROGRAM_size + _PROGRAM_FOOTER_size
 #data   _HEAP,_DATA_end
+#data   _BUFFER,$E000
 
 #code _HEADER
     DEFB 0
