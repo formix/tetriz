@@ -9,7 +9,7 @@ _PC             DEFL    0               ;Parameter counter
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT label.
                 MACRO   _ADDRP &reg
                 PUSH    &reg
-_PC             DEFL    {_PC + 1}
+_PC             DEFL    (_PC + 1)
                 ENDM
 
 
@@ -19,7 +19,7 @@ _PC             DEFL    {_PC + 1}
                 PUSH	HL
                 LD      HL,&lit
                 EX      (SP),HL
-_PC             DEFL    {_PC + 1}
+_PC             DEFL    (_PC + 1)
                 ENDM
 
 
@@ -28,7 +28,7 @@ _PC             DEFL    {_PC + 1}
 ;changed if the subroutine returns respectively a 16(HL) or 32(DEHL) bits 
 ;value.
                 MACRO   _CALL &proc
-_PC_&proc       DEFL    {_PC}
+_PC_&proc       DEFL    (_PC)
 _PC             DEFL    0
                 CALL    _PUSH
                 CALL    &proc
@@ -42,7 +42,7 @@ _PC             DEFL    0
     IF &cnt > 0
       EX      (SP),HL
       POP     HL
-      _CLEANP {&cnt - 1}
+      _CLEANP (&cnt - 1)
     ENDIF
     ENDM
 
@@ -53,7 +53,7 @@ _PC             DEFL    0
     MACRO   _GETP &reg, &idx
     LD      IY,14
     ADD     IY,SP
-    LD      &reg, (IY+{&idx * 2})
+    LD      &reg, (IY+(&idx * 2))
     ENDM
 
 
@@ -89,53 +89,60 @@ _PC             DEFL    0
     macro _and
     ; L = H && L
     ; Z matches the boolean value of L.
-    ex      af,af'
     ld      a,l         ; prepare the operation
     and     h           ; with h
     ld      l,a         ; get the result in l
-    ex      af,af'
     endm
 
     macro _or
     ; L = H || L
     ; Z matches the boolean value of L.
-    ex      af,af'
     ld      a,l         ; prepare the operation
     or      h           ; with h
     ld      l,a         ; get the result in l
-    ex      af,af'
     endm
 
 
     macro _xor
     ; L = H ^ L
     ; Z matches the boolean value of L.
-    ex      af,af'
     ld      a,l         ; prepare the operation
     xor     h           ; with h
     ld      l,a         ; get the result in l
-    ex      af,af'
     endm
 
 
     macro _not
     ; L = !L
     ; Z matches the boolean value of L.
-    ex      af,af'
     ld      a,1         ; prepare the operation
     xor     l           ; A = !L (XOR with 1 inverts the value)
     ld      l,a         ; get the result in l
-    ex      af,af'
     endm
 
 
-    macro _istrue
-    ; L is unchanged
-    ; Z matches the boolean value of L.
-    ex      af,af'
+    macro   _jrt &addr
+    ; jump relative if true
+    ; If L == 1, JR to the specified address.
+    push    bc
+    ld      c,a
     ld      a,l         ; prepare the operation
     or      a           ; Set or reset Z based on L content
-    ex      af,af'
+    ld      a,c
+    pop     bc
+    jr      nz,&addr
+    endm
+
+    macro   _jrf &addr
+    ; jump relative if false
+    ; If L == 0, JR to the specified address.
+    push    bc
+    ld      c,a
+    ld      a,l         ; prepare the operation
+    or      a           ; Set or reset Z based on L content
+    ld      a,c
+    pop     bc
+    jr      z,&addr
     endm
 
 
@@ -152,9 +159,10 @@ ATTR_HIDDEN                     EQU     $0038
 ATTR_RESET                      EQU     $0030
 ATTR_REVERSE                    EQU     $0037
 ATTR_UNDERSCORE                 EQU     $0034
-BC_DIVBY_DE                     EQU     $02F7
-CLEAR_CHAR_BUFFER               EQU     $01D8
-CLS                             EQU     $01F8
+BC_DIVBY_DE                     EQU     $02DD
+CHAR_HANDLER                    EQU     $8045
+CLEAR_CHAR_BUFFER               EQU     $01BB
+CLS                             EQU     $01DE
 COLOR_BLACK                     EQU     $0030
 COLOR_BLUE                      EQU     $0034
 COLOR_CYAN                      EQU     $0036
@@ -163,55 +171,55 @@ COLOR_MAGENTA                   EQU     $0035
 COLOR_RED                       EQU     $0031
 COLOR_WHITE                     EQU     $0037
 COLOR_YELLOW                    EQU     $0033
-DIV16                           EQU     $02F7
-DRAW_LINE                       EQU     $043C
-DRAW_RECT                       EQU     $04B7
-DRAW_ROW                        EQU     $0478
-eq16                            EQU     $072E
-eq32                            EQU     $0767
-eq8                             EQU     $0704
+DIV16                           EQU     $02DD
+DRAW_LINE                       EQU     $0422
+DRAW_RECT                       EQU     $049D
+DRAW_ROW                        EQU     $045E
+eq16                            EQU     $0714
+eq32                            EQU     $074D
+eq8                             EQU     $06EA
 ESC                             EQU     $001B
 FALSE                           EQU     $0000
-;GETCHAR                         EQU     $018A
-gt16                            EQU     $0744
-gt32                            EQU     $07A5
-gt8                             EQU     $0714
-gte16                           EQU     $075C
-gte32                           EQU     $07E3
-gte8                            EQU     $0725
+GETCHAR                         EQU     $017F
+gt16                            EQU     $072A
+gt32                            EQU     $078B
+gt8                             EQU     $06FA
+gte16                           EQU     $0742
+gte32                           EQU     $07C9
+gte8                            EQU     $070B
 INPA                            EQU     $00F4
 INPB                            EQU     $0116
 INPC                            EQU     $013A
-ITOA                            EQU     $0314
-load32                          EQU     $080F
-lt16                            EQU     $0739
-lt32                            EQU     $0786
-lt8                             EQU     $070C
-lte16                           EQU     $0750
-lte32                           EQU     $07C4
-lte8                            EQU     $071C
-MEMDUMP                         EQU     $05A3
-MUL16                           EQU     $0246
-MUL8                            EQU     $021B
-MUL_BC_DE_DEHL                  EQU     $0246
+ITOA                            EQU     $02FA
+load32                          EQU     $07F5
+lt16                            EQU     $071F
+lt32                            EQU     $076C
+lt8                             EQU     $06F2
+lte16                           EQU     $0736
+lte32                           EQU     $07AA
+lte8                            EQU     $0702
+MEMDUMP                         EQU     $0589
+MUL16                           EQU     $022C
+MUL8                            EQU     $0201
+MUL_BC_DE_DEHL                  EQU     $022C
 OUTA                            EQU     $00DE
 OUTB                            EQU     $0100
 OUTC                            EQU     $0122
-_POP                            EQU     $06FA
-PRINT_ENDL                      EQU     $01CD
-PRINT                           EQU     $01E3
-_PUSH                           EQU     $06F0
-;PUTCHAR                         EQU     $0160
+_POP                            EQU     $06E0
+PRINT_ENDL                      EQU     $01B0
+PRINT                           EQU     $01C9
+_PUSH                           EQU     $06D6
+PUTCHAR                         EQU     $0161
 RTS_OFF                         EQU     $00A1
 RTS_ON                          EQU     $00AA
-save32                          EQU     $0802
-SET_ATTRIBUTE                   EQU     $039B
-SET_COLOR                       EQU     $0368
-SET_POS                         EQU     $03BB
+save32                          EQU     $07E8
+SET_ATTRIBUTE                   EQU     $0381
+SET_COLOR                       EQU     $034E
+SET_POS                         EQU     $03A1
 SIOA                            EQU     $0001
 SIOB                            EQU     $0003
-SLEEP                           EQU     $01FE
+SLEEP                           EQU     $01E4
 START_RX_INT                    EQU     $00B3
 STOP_RX_INT                     EQU     $00BC
-TOHEX                           EQU     $06AE
+TOHEX                           EQU     $0694
 TRUE                            EQU     $0001

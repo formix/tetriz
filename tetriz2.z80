@@ -2,36 +2,18 @@
 #include "retroz-bios-inc.z80"
 #include "tetrominos.z80"
 
-
-
-    MACRO RANDOMIZE
+ MACRO RANDOMIZE
     LD      HL,(RANDOM_SEED)
     INC     HL
     LD      (RANDOM_SEED),HL
-    ENDM
+ ENDM
 
-    MACRO   CPRINT &chr
+ MACRO   CPRINT &chr
     EX      AF,AF'
     LD      A,&chr
     CALL    OUTA
     EX      AF,AF'
-    ENDM
-
-    macro   _jrt &addr
-    ex      af,af'
-    ld      a,l         ; prepare the operation
-    or      a           ; Set or reset Z based on L content
-    ex      af,af'
-    jr      nz,&addr
-    endm
-
-    macro   _jrf &addr
-    ex      af,af'
-    ld      a,l         ; prepare the operation
-    or      a           ; Set or reset Z based on L content
-    ex      af,af'
-    jr      z,&addr
-    endm
+ ENDM
 
 
 #code _DATA
@@ -45,11 +27,6 @@ START       DEFB "START!!!",0
 #data _HEAP
 RANDOM_SEED         DEFS 2
 
-#data _BUFFER
-BUFFER          DEFS    64
-BUFFER_HEAD     DEFS    2
-BUFFER_TAIL     DEFS    2
-BUFFER_SIZE     DEFS    1
 
 
 
@@ -65,46 +42,14 @@ MAIN:
     _ADDLP  PRESS_START
     _CALL   PRINT
 
-    LD      HL,BUFFER
-    LD      (BUFFER_HEAD),HL
-    LD      (BUFFER_TAIL),HL
-    LD      A,0
-    LD      (BUFFER_SIZE),A
-
-    ;CALL    START_RX_INT    ;Start listening to keyboard inputs
-
-    LD      A,'H'
-    CALL    PUTCHAR
-    LD      A,'E'
-    CALL    PUTCHAR
-    LD      A,'L'
-    CALL    PUTCHAR
-    LD      A,'L'
-    CALL    PUTCHAR
-    LD      A,'O'
-    CALL    PUTCHAR
-    CALL    DUMP_BUFFER
-
-    LD      A,(BUFFER_SIZE)
-    ADD     '0'
-    CALL    OUTA
-
-RDBUF:
-    CALL    GETCHAR
-    _jrf    RDBUF_END
-    CALL    OUTA
-    JR      RDBUF
-RDBUF_END:
-    CALL    OUTA
-
-
-
-
-
+    CALL    PRINT_ENDL
+    
+    CALL    START_RX_INT    ;Start listening to keyboard inputs
 
 GAME_LOOP:
-
-
+    CALL    GETCHAR
+    _jrf    GAME_LOOP
+    CALL    OUTA
     JP      GAME_LOOP
 
 
@@ -140,68 +85,8 @@ XRND:
 
 
 
-; Puts a character from reg A in the console circular buffer.
-; Inputs: Reg A, the character to add to the buffer.
-; Return: L=0 if the method failed to add the caracter.
-; Return: L=1 if the method succeeded to add the character to the buffer.
-; Change: H,L,E
-PUTCHAR:
-    DI                          ; Disable interrupts
-    LD      E,A                 ; Save A value
-    LD      A,(BUFFER_SIZE)
-    CP      64                  ; Check if the buffer is full
-    LD      A,E                 ; Get A back
-    LD      L,0                 ; Set failure flag
-    EI                          ; Enable interrupts
-    RET     Z                   ; Buffer full, we return
-    LD      HL,(BUFFER_HEAD)
-    LD      (HL),A              ; Add the character to the buffer head
-    INC     HL                  ; Move the buffer head forward
-    RES     6,L                 ; Modulo 64 given BUFFER address is divisible by 64
-    LD      (BUFFER_HEAD),HL    ; Save the new BUFFER_HEAD
-    LD      HL,BUFFER_SIZE
-    INC     (HL)                ; Increment the buffer size by one
-    LD      L,1                 ; Set success flag
-    EI                          ; Enable interrupts
-    RET
-
-; Gets a character from the console circular buffer into A.
-; Return: L=0, if the method failed to get a character in A (buffer empty).
-; Return: L=1, if the method succeeded to get a character in A.
-; Change: H,L,E
-GETCHAR:
-    LD      A,(BUFFER_SIZE)
-    OR      A                   ; Check if the buffer is empty
-    LD      L,0                 ; Set failure flag
-    RET     Z                   ; Buffer empty, we return
-    LD      HL,(BUFFER_TAIL)
-    LD      A,(HL)              ; Get the character at the tail
-    INC     L                   ; Move the buffer tail forward
-    RES     6,L                 ; Modulo 64 given BUFFER address is divisible by 64
-    LD      (BUFFER_TAIL),HL    ; Save the new BUFFER_TAIL
-    LD      HL,BUFFER_SIZE
-    DEC     (HL)                ; Decrement the buffer size by one
-    LD      L,1                 ; Set success flag
-    RET
 
 
 
 
-DUMP_BUFFER:
-    LD      A,(BUFFER_SIZE)
-    LD      C,A
-    XOR     A                   ; A = 0
-    CP      C                   ; Check if C == 0
-    LD      L,0                 ; Return failed
-    RET     Z                   ; Return, nothing to print.
-    LD      L,1                 ; Set success flag
-    LD      DE,(BUFFER_TAIL)    ; Get the buffer tail
-DUMP_BUFFER_PRINT:
-    LD      A,(DE)              ; Get the character
-    CALL    OUTA                ; Print the character
-    DEC     C                   ; On character less to print
-    RET     Z                   ; No more characters we are done.
-    INC     E                   ; Move to the next char
-    RES     6,E                 ; modulo 64
-    JR      DUMP_BUFFER_PRINT
 
