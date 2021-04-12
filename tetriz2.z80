@@ -47,9 +47,9 @@ MAIN:
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
 GAME_LOOP:
-    CALL    GETCHAR
-    _jrf    GAME_LOOP
-    CALL    OUTA
+;    CALL    GETCHAR
+;    _jrf    GAME_LOOP
+;    CALL    OUTA
     JP      GAME_LOOP
 
 
