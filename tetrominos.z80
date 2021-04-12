@@ -19,4 +19,26 @@ NEXT_TETROMINOS DEFB 2
 
 #code   _PROGRAM
 
+; 16 bit Parameters 
+;   0: Tetromino address
+;   1: Col(LB), Row(HB)
+;   2: Color (LB)
+DRAW_TETROMINO: JR  DT_START
+DT_CURR_POS:
+DT_CURR_COL DEFS 1
+DT_CURR_ROW DEFS 1
+DT_START:
+    _GETP       BC,1
+    LD          (DT_CURR_POS),BC
+
+    LD          A,4
+    LD          D,A
+    LD          E,A
+
+    _ADDRP      BC
+    _CALL       SET_POS
+
+    RET
+
+
 

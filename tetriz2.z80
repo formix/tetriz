@@ -46,10 +46,21 @@ MAIN:
     
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
+
+WAIT_START:
+    RANDOMIZE
+    CALL    GETCHAR
+    _jrf    WAIT_START
+    CALL    CLS
+
+
+    LD      L,0
+    CALL    DRAW_TETROMINO
+
+
 GAME_LOOP:
     CALL    GETCHAR
-    _jrf    GAME_LOOP
-    CALL    OUTA
+
     JP      GAME_LOOP
 
 
