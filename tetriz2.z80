@@ -1,6 +1,5 @@
 #include "layout.z80"
 #include "retroz-bios-inc.z80"
-#include "tetrominos.z80"
 
  MACRO RANDOMIZE
     LD      HL,(RANDOM_SEED)
@@ -22,10 +21,25 @@ WELCOME     DEFB "+++ TetriZ +++",0
 PRESS_START DEFB "Press any key to start...",0
 START       DEFB "START!!!",0
 
+TETROMINOS:
+SHAPE1      DEFW $E400,$2620,$04E0,$8C80
+SHAPE2      DEFW $E200,$2260,$08E0,$C880
+SHAPE3      DEFW $C600,$2640,$0C60,$4C80
+SHAPE4      DEFW $6600,$6600,$6600,$6600
+SHAPE5      DEFW $6C00,$8C40,$06C0,$8C40
+SHAPE6      DEFW $E800,$6220,$02E0,$8C80
+SHAPE7      DEFW $0F00,$4444,$0F00,$4444
+
 
 
 #data _HEAP
+
 RANDOM_SEED         DEFS 2
+; STRUCT_TETROMINO:
+; STRUCT_TETROMINO_POS           DEFS 2
+; STRUCT_TETROMINO_SHAPE         DEFS 2
+; STRUCT_TETROMINO_ORIENTATION   DEFS 1
+; NEXT_TETROMINOS DEFS 2
 
 
 
@@ -36,16 +50,14 @@ MAIN:
 
     _ADDLP  WELCOME
     _CALL   PRINT
-    CALL    PRINT_ENDL
-    CALL    PRINT_ENDL
+     CALL    PRINT_ENDL
+     CALL    PRINT_ENDL
 
     _ADDLP  PRESS_START
     _CALL   PRINT
-
     CALL    PRINT_ENDL
     
     CALL    START_RX_INT    ;Start listening to keyboard inputs
-
 
 WAIT_START:
     RANDOMIZE
@@ -54,13 +66,14 @@ WAIT_START:
     CALL    CLS
 
 
-    LD      L,0
-    CALL    DRAW_TETROMINO
+    ;LD      L,0
+    ;CALL    DRAW_TETROMINO
 
 
 GAME_LOOP:
     CALL    GETCHAR
-
+    _jrf    GAME_LOOP
+    CALL    OUTA
     JP      GAME_LOOP
 
 
@@ -95,6 +108,28 @@ XRND:
   ret
 
 
+
+
+; ; 16 bit Parameters 
+; ;   0: Tetromino address
+; ;   1: Col(LB), Row(HB)
+; ;   2: Color (LB)
+; DRAW_TETROMINO: JR  DT_START
+; DT_CURR_POS:
+; DT_CURR_COL DEFS 1
+; DT_CURR_ROW DEFS 1
+; DT_START:
+;     _GETP       BC,1
+;     LD          (DT_CURR_POS),BC
+
+;     LD          A,4
+;     LD          D,A
+;     LD          E,A
+
+;     _ADDRP      BC
+;     _CALL       SET_POS
+
+;     RET
 
 
 

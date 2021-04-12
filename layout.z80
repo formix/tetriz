@@ -1,18 +1,17 @@
 #if !defined(_HEADER)
 
-TARGET_ADDR EQU $8100
+EXEC_TARGET EQU $8100
 
 #target bin
 
 #code   _HEADER
-#code   _PROGRAM, TARGET_ADDR
+#code   _PROGRAM, EXEC_TARGET
 #code   _PROGRAM_FOOTER
-#code   _DATA, TARGET_ADDR + _PROGRAM_size + _PROGRAM_FOOTER_size
+#code   _DATA, EXEC_TARGET + _PROGRAM_size + _PROGRAM_FOOTER_size
 #data   _HEAP,_DATA_end
 
 #code _HEADER
     DEFB 0
     DEFW _PROGRAM_size+_DATA_size
-    DEFW TARGET_ADDR
-
+    DEFW EXEC_TARGET
 #endif
