@@ -65,6 +65,7 @@ WAIT_START:
     _jrf    WAIT_START
     CALL    CLS
 
+    
 
     ;LD      L,0
     ;CALL    DRAW_TETROMINO
@@ -110,26 +111,90 @@ XRND:
 
 
 
-; ; 16 bit Parameters 
-; ;   0: Tetromino address
-; ;   1: Col(LB), Row(HB)
-; ;   2: Color (LB)
-; DRAW_TETROMINO: JR  DT_START
-; DT_CURR_POS:
-; DT_CURR_COL DEFS 1
-; DT_CURR_ROW DEFS 1
-; DT_START:
-;     _GETP       BC,1
-;     LD          (DT_CURR_POS),BC
+; Constant values required by the DRAW_TETROMINOS function
+NEXT_LINE       DEFB ESC,"[B",0,ESC,"[4D",0 ;Down 1, back 4
+FORWARD_2       DEFB ESC,"[2C",0
+BLOCK           DEFB "  ",0
 
-;     LD          A,4
-;     LD          D,A
-;     LD          E,A
+; DRAW_TETROMINO's parameter indices
+DT_PARAM_COLOR  EQU 2
+DT_PARAM_POS    EQU 1
+DT_PARAM_SHAPE  EQU 0               ; Contains the shape address not the shape itself
 
-;     _ADDRP      BC
-;     _CALL       SET_POS
+; Draw a tetromino at a screen position with a given color.
+DRAW_TETROMINO:
 
-;     RET
+    ; Set cursor position
+    _GETP       BC,DT_PARAM_POS     ; Get the position parameter
+    _ADDRP      BC                  ; Add the position parameter for SET_COLOR call
+    _CALL       SET_POS             ; Call the set position function
+
+    ; Set the tetromino color
+    _GETP       BC,DT_PARAM_COLOR   ; Get the color parameter
+    LD          B,C                 ; Set the background to the same color as the foreground
+    _ADDRP      BC                  ; Add background (B) and foreground (C) color parameters call
+    _CALL       SET_COLOR           ; Call the set color function
+
+    ; Load the shape value into DE using the shape address
+    _GETP       HL,DT_PARAM_SHAPE   ; Get the shape address parameter
+    LD          E,(HL)
+    INC         HL
+    LD          D,(HL)
+
+    ; Create a 4 bytes array to store each shape row on the stack
+    PUSH        HL
+    PUSH        HL
+
+    ; Initialize the array of rows. Row data is stored in the high nibble of each byte.
+    LD          IX,$0000
+    ADD         IX,SP               ; Initialize the indexer to the array address
+    LD          (IX+0),D
+    SLA         D
+    SLA         D
+    SLA         D
+    SLA         D
+    LD          (IX+1),D
+    LD          (IX+2),E
+    SLA         E
+    SLA         E
+    SLA         E
+    SLA         E
+    LD          (IX+3),E
+    
+    ; Initialize the array cursor HL to the first array element.
+    PUSH        IX                  ; Save the array address on the stack
+    POP         HL                  ; Get the array address back into HL
+
+    ; Draw the tetromino
+    LD          B,4                 ; Initialize the row counter
+DT_DRAW_ROW:
+    LD          C,4                 ; Initialize the col counter
+    LD          A,(HL)              ; Load the row into A
+DT_DRAW_COL:
+    SLA         A
+    JR          C,DT_PRINT          ; Check if the bit is set
+    _ADDLP      FORWARD_2           ; Not set, skip two characters
+    _CALL       PRINT
+    JR          DT_DRAW_COL_END
+DT_PRINT:
+    _ADDLP      BLOCK               ; Bit is set, print a block
+    _CALL       PRINT
+DT_DRAW_COL_END:
+    DEC         C                   ; One less column to print
+    JR          NZ,DT_DRAW_COL      ; Jump to draw the next column if it is not the last column
+    DEC         B                   ; Done dwaing the row, decrement the row count
+    JR          Z,DT_END            ; Jump to the end of the function if that was the last row
+    INC         HL                  ; Increment the array cursor
+    _ADDLP      NEXT_LINE
+    _CALL       PRINT               ; Set the cursor on the next line to draw
+    JR          DT_DRAW_ROW         ; Jump to draw the next row
+
+DT_END:
+    ; Delete the array from the stack
+    POP         HL
+    POP         HL
+
+    RET
 
 
 
