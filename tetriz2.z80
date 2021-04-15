@@ -56,7 +56,7 @@ MAIN:
     _ADDLP  PRESS_START
     _CALL   PRINT
     CALL    PRINT_ENDL
-    
+
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
 WAIT_START:
@@ -69,6 +69,60 @@ WAIT_START:
 
     ;LD      L,0
     ;CALL    DRAW_TETROMINO
+
+
+START_CYCLE:
+    LD      HL,TETROMINOS
+    LD      B,7
+
+DISPLAY_SHAPE:
+    LD      A,B
+    ADD     '0'
+    LD      C,A
+
+    _ADDRP  BC
+    _ADDLP  $050A
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+    _ADDRP  BC
+    _ADDLP  $1020
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+    _ADDRP  BC
+    _ADDLP  $1212
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+
+    _ADDLP  500
+    _CALL   SLEEP
+
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _ADDLP  $050A
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _ADDLP  $1020
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+    LD      C,COLOR_BLACK
+    _ADDRP  BC
+    _ADDLP  $1212
+    _ADDRP  HL
+    _CALL   DRAW_TETROMINO
+
+
+    LD      DE,8
+    ADD     HL,DE
+    DEC     B
+    JP      NZ,DISPLAY_SHAPE
+    JP      START_CYCLE
 
 
 GAME_LOOP:
@@ -112,7 +166,7 @@ XRND:
 
 
 ; Constant values required by the DRAW_TETROMINOS function
-NEXT_LINE       DEFB ESC,"[B",0,ESC,"[4D",0 ;Down 1, back 4
+NEXT_LINE       DEFB ESC,"[B",ESC,"[8D",0 ;Down 1, back 4
 FORWARD_2       DEFB ESC,"[2C",0
 BLOCK           DEFB "  ",0
 
@@ -167,32 +221,42 @@ DRAW_TETROMINO:
 
     ; Draw the tetromino
     LD          B,4                 ; Initialize the row counter
-DT_DRAW_ROW:
+DT_DRAW_ROWS:
     LD          C,4                 ; Initialize the col counter
     LD          A,(HL)              ; Load the row into A
-DT_DRAW_COL:
+    AND         $F0                 ; Mask the row data
+    JR          NZ,DT_DRAW_COLS     ; If A != 0, draw that row
+    DEC         B                   ; Row is empty, skip that row
+    JR          Z,DT_END            ; No more rows, we are done
+    INC         HL                  ; Move the cursor to the next row byte
+    JR          DT_DRAW_ROWS        ; Draw the next row
+DT_DRAW_COLS:
     SLA         A
     JR          C,DT_PRINT          ; Check if the bit is set
     _ADDLP      FORWARD_2           ; Not set, skip two characters
     _CALL       PRINT
-    JR          DT_DRAW_COL_END
+    JR          DT_DRAW_COLS_END
 DT_PRINT:
     _ADDLP      BLOCK               ; Bit is set, print a block
     _CALL       PRINT
-DT_DRAW_COL_END:
+DT_DRAW_COLS_END:
     DEC         C                   ; One less column to print
-    JR          NZ,DT_DRAW_COL      ; Jump to draw the next column if it is not the last column
+    JR          NZ,DT_DRAW_COLS     ; Jump to draw the next column if it is not the last column
     DEC         B                   ; Done dwaing the row, decrement the row count
     JR          Z,DT_END            ; Jump to the end of the function if that was the last row
     INC         HL                  ; Increment the array cursor
     _ADDLP      NEXT_LINE
     _CALL       PRINT               ; Set the cursor on the next line to draw
-    JR          DT_DRAW_ROW         ; Jump to draw the next row
+    JR          DT_DRAW_ROWS        ; Jump to draw the next row
 
 DT_END:
     ; Delete the array from the stack
     POP         HL
     POP         HL
+
+    ; "Hide" the cursor in the top left corner
+    _ADDLP      $0101
+    _CALL       SET_POS
 
     RET
 
