@@ -93,10 +93,25 @@ WAIT_START:
     LD      (IX+ST_COL),20
     LD      (IX+ST_ROW),10
 
+
+LOOP:
     _ADDLP  ACTION_DRAW           ; Draw tetromino
     _ADDRP  IX
     _CALL   DRAW_TETROMINO
 
+    LD      BC,1000
+    _ADDLP  BC
+    _CALL    SLEEP
+
+    _ADDLP  ACTION_EREASE
+    _ADDRP  IX
+    _CALL   DRAW_TETROMINO
+
+    LD      BC,1000
+    _ADDLP  BC
+    _CALL    SLEEP
+
+    JP LOOP
 
 
 GAME_LOOP:
@@ -150,8 +165,8 @@ ROTATE:
 
 ;;;;;;;;;;;;;;;;;;; DRAW_TETROMINO ;;;;;;;;;;;;;;;;;;;
 ; Flags for the erease parameter
-ACTION_EREASE       EQU 1
-ACTION_DRAW         EQU 0
+ACTION_EREASE       EQU $0101
+ACTION_DRAW         EQU $0000
 ; DRAW_TETROMINO's parameters
 DT_PARAM_ACTION     EQU 1   ; If LByte == 0: draw; if LByte == 1: erease
 DT_PARAM_TETROMINO  EQU 0   ; Expect the address of a tetromino structure
@@ -173,8 +188,10 @@ DRAW_TETROMINO:
     _CALL       SET_POS             ; Call the set position function
 
     ; Set the tetromino color
-    _GETP       HL,DT_PARAM_ACTION
-    _jrf        DRAW_TETROMINO_DRAW
+    _GETP       DE,DT_PARAM_ACTION
+    LD          A,E
+    OR          A
+    JR          Z,DRAW_TETROMINO_DRAW
     LD          B,'0'
     LD          C,B
     JR          DRAW_TETROMINO_SET_COLOR
