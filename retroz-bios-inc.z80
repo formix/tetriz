@@ -49,7 +49,7 @@ _PC             DEFL    0
 
 ;Loads the register &reg with the parameter at index &idx
 ;Since IY is used to get at parameters, its not possible to load
-;a parameter into IX or IY using this macro. First parameter is at index 0.
+;a parameter into IY using this macro. First parameter is at index 0.
     MACRO   _GETP &reg, &idx
     LD      IY,14
     ADD     IY,SP

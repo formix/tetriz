@@ -7,12 +7,21 @@
     LD      (RANDOM_SEED),HL
  ENDM
 
- MACRO   CPRINT &chr
-    EX      AF,AF'
+ MACRO CPRINT &chr
+    PUSH    AF
     LD      A,&chr
     CALL    OUTA
-    EX      AF,AF'
+    POP     AF
  ENDM
+
+ MACRO MUL_BY_8
+    RLA
+    RLA
+    RLA
+    AND     0b11111000
+ ENDM
+
+TETROMINO_COUNT     EQU     7
 
 
 #code _DATA
@@ -21,26 +30,30 @@ WELCOME     DEFB "+++ TetriZ +++",0
 PRESS_START DEFB "Press any key to start...",0
 START       DEFB "START!!!",0
 
-TETROMINOS:
-SHAPE1      DEFW $E400,$2620,$04E0,$8C80
-SHAPE2      DEFW $E200,$2260,$08E0,$C880
-SHAPE3      DEFW $C600,$2640,$0C60,$4C80
-SHAPE4      DEFW $6600,$6600,$6600,$6600
-SHAPE5      DEFW $6C00,$8C40,$06C0,$8C40
-SHAPE6      DEFW $E800,$6220,$02E0,$8C80
-SHAPE7      DEFW $0F00,$4444,$0F00,$4444
-
+TETROMINOS: DEFW $E400,$2620,$04E0,$8C80    ; Tetromino 0, orientation 0 to 3
+            DEFW $E200,$2260,$08E0,$C880    ; Tetromino 1, orientation 0 to 3
+            DEFW $C600,$2640,$0C60,$4C80    ; Tetromino 2, orientation 0 to 3
+            DEFW $6600,$6600,$6600,$6600    ; Tetromino 3, orientation 0 to 3
+            DEFW $6C00,$8C40,$06C0,$8C40    ; Tetromino 4, orientation 0 to 3
+            DEFW $E800,$6220,$02E0,$8C80    ; Tetromino 5, orientation 0 to 3
+            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
 
 
 #data _HEAP
 
-RANDOM_SEED         DEFS 2
-; STRUCT_TETROMINO:
-; STRUCT_TETROMINO_POS           DEFS 2
-; STRUCT_TETROMINO_SHAPE         DEFS 2
-; STRUCT_TETROMINO_ORIENTATION   DEFS 1
-; NEXT_TETROMINOS DEFS 2
+RANDOM_SEED                     DEFS 2
+NEXT_TETROMINO_INDEX            DEFS 1
 
+STRUCT_TETROMINO                DEFS 4
+ST_SHAPE                        EQU  0      ; The shape index (0-6)
+ST_ORIENTATION                  EQU  1      ; The shape orientation (0-3)
+ST_POS                          EQU  2      ; The position of the shape
+ST_COL                          EQU  2      ; The column position of the shape
+ST_ROW                          EQU  3      ; The row position of the shape
+
+PG_HEIGHT                       EQU 20
+PG_WIDTH                        EQU 10
+PLAYGROUND:                     DEFS PG_HEIGHT * PG_WIDTH
 
 
 
@@ -60,76 +73,228 @@ MAIN:
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
 WAIT_START:
-    RANDOMIZE
+    RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
     CALL    GETCHAR
     _jrf    WAIT_START
     CALL    CLS
 
-    
+    ; Get a random tetromino index
+    LD      HL,(RANDOM_SEED)
+    _ADDRP  HL          ; Add the random seed value as MODULO parameter 1 (divisee).
+    LD      L,TETROMINO_COUNT
+    _ADDRP  HL          ; Add the divisor as MODULO parameter 0 (divisor).
+    _CALL   MODULO      ; Get the tetromino index in L
+    LD      A,L         ; The random tetromino index is in A
 
-    ;LD      L,0
-    ;CALL    DRAW_TETROMINO
+    ; Initialize the tetromino structure
+    LD      IX,STRUCT_TETROMINO
+    LD      (IX+ST_SHAPE),A
+    LD      (IX+ST_ORIENTATION),0
+    LD      (IX+ST_COL),20
+    LD      (IX+ST_ROW),10
 
-
-START_CYCLE:
-    LD      HL,TETROMINOS
-    LD      B,7
-
-DISPLAY_SHAPE:
-    LD      A,B
-    ADD     '0'
-    LD      C,A
-
-    _ADDRP  BC
-    _ADDLP  $050A
-    _ADDRP  HL
+    _ADDLP  ACTION_DRAW           ; Draw tetromino
+    _ADDRP  IX
     _CALL   DRAW_TETROMINO
 
-    _ADDRP  BC
-    _ADDLP  $1020
-    _ADDRP  HL
-    _CALL   DRAW_TETROMINO
-
-    _ADDRP  BC
-    _ADDLP  $1212
-    _ADDRP  HL
-    _CALL   DRAW_TETROMINO
-
-
-    _ADDLP  500
-    _CALL   SLEEP
-
-    LD      C,COLOR_BLACK
-    _ADDRP  BC
-    _ADDLP  $050A
-    _ADDRP  HL
-    _CALL   DRAW_TETROMINO
-
-    LD      C,COLOR_BLACK
-    _ADDRP  BC
-    _ADDLP  $1020
-    _ADDRP  HL
-    _CALL   DRAW_TETROMINO
-
-    LD      C,COLOR_BLACK
-    _ADDRP  BC
-    _ADDLP  $1212
-    _ADDRP  HL
-    _CALL   DRAW_TETROMINO
-
-
-    LD      DE,8
-    ADD     HL,DE
-    DEC     B
-    JP      NZ,DISPLAY_SHAPE
-    JP      START_CYCLE
 
 
 GAME_LOOP:
     CALL    GETCHAR
     _jrf    GAME_LOOP
-    CALL    OUTA
+
+    CP      'w'
+    LD      B,1
+    CALL    Z,ROTATE
+
+    CP      's'
+    LD      B,-1
+    CALL    Z,ROTATE
+
+
+
+
     JP      GAME_LOOP
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;; ROTATE ;;;;;;;;;;;;;;;;;;;
+;; Inputs: B the rotation value. 1 = clockwise, -1 = counter-clockwise
+ROTATE:
+
+    ; Erease the tetromino at its current orientation
+    _ADDLP      ACTION_EREASE   ; Erease = TRUE
+    _ADDLP      STRUCT_TETROMINO
+    _CALL       DRAW_TETROMINO
+
+    ; Load the tetromino into the indexer register
+    LD      IX,STRUCT_TETROMINO
+    LD      A,(IX+ST_ORIENTATION)
+
+    ; Do the rotation
+    ADD     B
+    AND     $03         ; Modulo 4
+    LD      (IX+ST_ORIENTATION),A
+
+    ; Draw the tetromino with its new orientation.
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL   DRAW_TETROMINO
+
+    RET
+    
+
+
+
+;;;;;;;;;;;;;;;;;;; DRAW_TETROMINO ;;;;;;;;;;;;;;;;;;;
+; Flags for the erease parameter
+ACTION_EREASE       EQU 1
+ACTION_DRAW         EQU 0
+; DRAW_TETROMINO's parameters
+DT_PARAM_ACTION     EQU 1   ; If LByte == 0: draw; if LByte == 1: erease
+DT_PARAM_TETROMINO  EQU 0   ; Expect the address of a tetromino structure
+; Constant values required by the DRAW_TETROMINOS function
+DT_NEXT_LINE    DEFB ESC,"[B",ESC,"[8D",0 ;Down 1, back 8
+DT_FORWARD_2    DEFB ESC,"[2C",0
+DT_BLOCK        DEFB "  ",0
+
+; Draw a tetromino at a screen position with a given color.
+DRAW_TETROMINO:
+
+    _GETP       BC,DT_PARAM_TETROMINO
+    LD          IXh,B
+    LD          IXl,C   ; IX contains the tetromino structure
+
+    ; Set cursor position
+    LD          BC,(IX+ST_POS)
+    _ADDRP      BC                  ; Add the position parameter for SET_COLOR call
+    _CALL       SET_POS             ; Call the set position function
+
+    ; Set the tetromino color
+    _GETP       HL,DT_PARAM_ACTION
+    _jrf        DRAW_TETROMINO_DRAW
+    LD          B,'0'
+    LD          C,B
+    JR          DRAW_TETROMINO_SET_COLOR
+
+DRAW_TETROMINO_DRAW:
+    LD          A,(IX+ST_SHAPE)
+    LD          E,A                 ; Save the shape index for later
+    ADD         '1'                 ; Convert the shape index to an ANSI color code
+    LD          B,A                 ; Set the background...
+    LD          C,A                 ; ...and the foreground to the same color.
+
+DRAW_TETROMINO_SET_COLOR:
+    _ADDRP      BC                  ; Add background (B) and foreground (C) as parameters
+    _CALL       SET_COLOR           ; Call the set color function
+
+    ; Load the shape value into DE using the shape address
+    LD          A,E
+    MUL_BY_8                        ; Convert the shape index to a byte position, each shape size being 8 bytes
+    ADD         A,(IX+ST_ORIENTATION)
+    ADD         A,(IX+ST_ORIENTATION) ; Sets the correct orientation (2 x orientation)
+    LD          HL,$0000
+    LD          L,A                 ; H=0, L=A
+    LD          DE,TETROMINOS
+    ADD         HL,DE               ; HL contains the shape address
+    LD          E,(HL)
+    INC         HL
+    LD          D,(HL)              ; DE contains the shape value
+
+    ; Create a 4 bytes array to store each shape row on the stack
+    PUSH        HL
+    PUSH        HL
+
+    ; Initialize the array of rows. Row data is stored in the high nibble of each byte.
+    LD          IY,$0000
+    ADD         IY,SP               ; Initialize the indexer to the array address
+    LD          (IY+0),D            ; First row
+    SLA         D
+    SLA         D
+    SLA         D
+    SLA         D                   ; Shift left 4 bits
+    LD          (IY+1),D            ; second row
+    LD          (IY+2),E            ; third row
+    SLA         E
+    SLA         E
+    SLA         E
+    SLA         E                   ; shift left 4 bits
+    LD          (IY+3),E            ; fourth row
+    
+    ; Initialize the array cursor HL to the first array element.
+    PUSH        IY                  ; Save the rows address on the stack
+    POP         HL                  ; Get the rowsaddress back into HL
+
+    ; Draw the tetromino
+    LD          B,4                 ; Initialize the row counter
+DT_DRAW_ROWS:
+    LD          C,4                 ; Initialize the col counter
+    LD          A,(HL)              ; Load the row into A
+    AND         $F0                 ; Mask the row data
+    JR          NZ,DT_DRAW_COLS     ; If A != 0, draw that row
+    DEC         B                   ; Row is empty, skip that row
+    JR          Z,DT_END            ; No more rows, we are done
+    INC         HL                  ; Move the cursor to the next row byte
+    JR          DT_DRAW_ROWS        ; Draw the next row
+DT_DRAW_COLS:
+    SLA         A
+    JR          C,DT_PRINT          ; Check if the bit is set
+    _ADDLP      DT_FORWARD_2        ; Not set, skip two characters
+    _CALL       PRINT
+    JR          DT_DRAW_COLS_END
+DT_PRINT:
+    _ADDLP      DT_BLOCK            ; Bit is set, print a block
+    _CALL       PRINT
+DT_DRAW_COLS_END:
+    DEC         C                   ; One less column to print
+    JR          NZ,DT_DRAW_COLS     ; Jump to draw the next column if it is not the last column
+    DEC         B                   ; Done dwaing the row, decrement the row count
+    JR          Z,DT_END            ; Jump to the end of the function if that was the last row
+    INC         HL                  ; Increment the array cursor
+    _ADDLP      DT_NEXT_LINE
+    _CALL       PRINT               ; Set the cursor on the next line to draw
+    JR          DT_DRAW_ROWS        ; Jump to draw the next row
+
+DT_END:
+    ; Delete the array from the stack
+    POP         HL
+    POP         HL
+
+    ; "Hide" the cursor in the top left corner
+    _ADDLP      $0101
+    _CALL       SET_POS
+
+    RET
+
+
+
+; Computes the remainder of the division.
+MOD_PARAM_DIVISEE     EQU     1
+MOD_PARAM_DIVISOR     EQU     0     ; 8 bits, second register (8L)
+; Returns the modulo result in L
+; H content is unknown
+; taken from https://wikiti.brandonw.net/index.php?title=Z80_Routines:Math:Division#8.2F8_division
+MODULO:
+    _GETP   HL,MOD_PARAM_DIVISEE
+    _GETP   BC,MOD_PARAM_DIVISOR
+
+; The following routine divides hl by c and places the quotient in hl and the remainder in a 
+    xor	a
+    ld	b, 16
+_div_hl_c_loop:
+    add	hl, hl
+    rla
+    jr	c, $+5
+    cp	c
+    jr	c, $+4
+    sub	c
+    inc	l
+    djnz _div_hl_c_loop
+    LD      L,A
+    _RET_HL HL
+
 
 
 ; 16-bit xorshift pseudorandom number generator by John Metcalf
@@ -161,107 +326,4 @@ XRND:
   ld h,a
   ld (RANDOM_SEED),hl
   ret
-
-
-
-
-; Constant values required by the DRAW_TETROMINOS function
-NEXT_LINE       DEFB ESC,"[B",ESC,"[8D",0 ;Down 1, back 4
-FORWARD_2       DEFB ESC,"[2C",0
-BLOCK           DEFB "  ",0
-
-; DRAW_TETROMINO's parameter indices
-DT_PARAM_COLOR  EQU 2
-DT_PARAM_POS    EQU 1
-DT_PARAM_SHAPE  EQU 0               ; Contains the shape address not the shape itself
-
-; Draw a tetromino at a screen position with a given color.
-DRAW_TETROMINO:
-
-    ; Set cursor position
-    _GETP       BC,DT_PARAM_POS     ; Get the position parameter
-    _ADDRP      BC                  ; Add the position parameter for SET_COLOR call
-    _CALL       SET_POS             ; Call the set position function
-
-    ; Set the tetromino color
-    _GETP       BC,DT_PARAM_COLOR   ; Get the color parameter
-    LD          B,C                 ; Set the background to the same color as the foreground
-    _ADDRP      BC                  ; Add background (B) and foreground (C) color parameters call
-    _CALL       SET_COLOR           ; Call the set color function
-
-    ; Load the shape value into DE using the shape address
-    _GETP       HL,DT_PARAM_SHAPE   ; Get the shape address parameter
-    LD          E,(HL)
-    INC         HL
-    LD          D,(HL)
-
-    ; Create a 4 bytes array to store each shape row on the stack
-    PUSH        HL
-    PUSH        HL
-
-    ; Initialize the array of rows. Row data is stored in the high nibble of each byte.
-    LD          IX,$0000
-    ADD         IX,SP               ; Initialize the indexer to the array address
-    LD          (IX+0),D
-    SLA         D
-    SLA         D
-    SLA         D
-    SLA         D
-    LD          (IX+1),D
-    LD          (IX+2),E
-    SLA         E
-    SLA         E
-    SLA         E
-    SLA         E
-    LD          (IX+3),E
-    
-    ; Initialize the array cursor HL to the first array element.
-    PUSH        IX                  ; Save the array address on the stack
-    POP         HL                  ; Get the array address back into HL
-
-    ; Draw the tetromino
-    LD          B,4                 ; Initialize the row counter
-DT_DRAW_ROWS:
-    LD          C,4                 ; Initialize the col counter
-    LD          A,(HL)              ; Load the row into A
-    AND         $F0                 ; Mask the row data
-    JR          NZ,DT_DRAW_COLS     ; If A != 0, draw that row
-    DEC         B                   ; Row is empty, skip that row
-    JR          Z,DT_END            ; No more rows, we are done
-    INC         HL                  ; Move the cursor to the next row byte
-    JR          DT_DRAW_ROWS        ; Draw the next row
-DT_DRAW_COLS:
-    SLA         A
-    JR          C,DT_PRINT          ; Check if the bit is set
-    _ADDLP      FORWARD_2           ; Not set, skip two characters
-    _CALL       PRINT
-    JR          DT_DRAW_COLS_END
-DT_PRINT:
-    _ADDLP      BLOCK               ; Bit is set, print a block
-    _CALL       PRINT
-DT_DRAW_COLS_END:
-    DEC         C                   ; One less column to print
-    JR          NZ,DT_DRAW_COLS     ; Jump to draw the next column if it is not the last column
-    DEC         B                   ; Done dwaing the row, decrement the row count
-    JR          Z,DT_END            ; Jump to the end of the function if that was the last row
-    INC         HL                  ; Increment the array cursor
-    _ADDLP      NEXT_LINE
-    _CALL       PRINT               ; Set the cursor on the next line to draw
-    JR          DT_DRAW_ROWS        ; Jump to draw the next row
-
-DT_END:
-    ; Delete the array from the stack
-    POP         HL
-    POP         HL
-
-    ; "Hide" the cursor in the top left corner
-    _ADDLP      $0101
-    _CALL       SET_POS
-
-    RET
-
-
-
-
-
 
