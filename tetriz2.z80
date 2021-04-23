@@ -61,11 +61,10 @@ PLAYGROUND:             DEFS PG_HEIGHT * PG_WIDTH
 #code _PROGRAM
 
 MAIN:
-
     _ADDLP  WELCOME
     _CALL   PRINT
-     CALL    PRINT_ENDL
-     CALL    PRINT_ENDL
+    CALL    PRINT_ENDL
+    CALL    PRINT_ENDL
 
     _ADDLP  PRESS_START
     _CALL   PRINT
@@ -106,11 +105,38 @@ GAME_LOOP:
     LD      B,1
     CALL    Z,TRANSLATE
 
+    CP      'n'
+    CALL    Z,MOVE_DOWN
+
     CP      ' '
     CALL    Z,EREASE_AND_PICK_NEW_SHAPE
 
+    CP      'R'
+    PUSH    AF
+    CALL    Z,CLS
+    POP     AF
+    JP      Z,$8100
+
+    CP      'Q'
+    JP      Z,0
+
     JP      GAME_LOOP
 
+
+
+MOVE_DOWN:
+    PUSH        AF
+    ; Erease the tetromino at its current orientation
+    _ADDLP  ACTION_EREASE   ; Erease = TRUE
+    _ADDLP  STRUCT_TETROMINO
+    _CALL   DRAW_TETROMINO
+    LD      IX,STRUCT_TETROMINO
+    INC     (IX+ST_ROW)
+    _ADDLP  ACTION_DRAW   ; Erease = FALSE
+    _ADDLP  STRUCT_TETROMINO
+    _CALL   DRAW_TETROMINO
+    POP     AF
+    RET
 
 
 TRANSLATE:
