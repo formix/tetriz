@@ -30,13 +30,13 @@ WELCOME     DEFB "+++ TetriZ +++",0
 PRESS_START DEFB "Press any key to start...",0
 START       DEFB "START!!!",0
 
-TETROMINOS: DEFW $E400,$2620,$04E0,$8C80    ; Tetromino 0, orientation 0 to 3
-            DEFW $E200,$2260,$08E0,$C880    ; Tetromino 1, orientation 0 to 3
+TETROMINOS: DEFW $E400,$4C40,$4E00,$8C80    ; Tetromino 0, orientation 0 to 3
+            DEFW $E200,$44C0,$8E00,$C880    ; Tetromino 1, orientation 0 to 3
             DEFW $C600,$2640,$0C60,$4C80    ; Tetromino 2, orientation 0 to 3
-            DEFW $6600,$6600,$6600,$6600    ; Tetromino 3, orientation 0 to 3
-            DEFW $6C00,$8C40,$06C0,$8C40    ; Tetromino 4, orientation 0 to 3
-            DEFW $E800,$6220,$02E0,$8C80    ; Tetromino 5, orientation 0 to 3
-            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
+            DEFW $CC00,$CC00,$CC00,$CC00    ; Tetromino 3, orientation 0 to 3
+            DEFW $6C00,$8C40,$6C00,$8C40    ; Tetromino 4, orientation 0 to 3
+            DEFW $E800,$C440,$2E00,$88C0    ; Tetromino 5, orientation 0 to 3
+            DEFW $F000,$4444,$F000,$4444    ; Tetromino 6, orientation 0 to 3
 
 
 #data _HEAP
@@ -76,7 +76,39 @@ WAIT_START:
     RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
     CALL    GETCHAR
     _jrlf   WAIT_START
+
     CALL    CLS
+    CALL    PICK_NEW_SHAPE
+
+GAME_LOOP:
+    RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
+
+    CALL    GETCHAR
+    _jrlf   GAME_LOOP
+
+    CP      'w'
+    LD      B,1
+    CALL    Z,ROTATE
+
+    CP      's'
+    LD      B,-1
+    CALL    Z,ROTATE
+
+    CP      ' '
+    CALL    Z,EREASE_AND_PICK_NEW_SHAPE
+
+    JP      GAME_LOOP
+
+
+
+EREASE_AND_PICK_NEW_SHAPE:
+
+    ; Erease the tetromino at its current orientation
+    _ADDLP      ACTION_EREASE   ; Erease = TRUE
+    _ADDLP      STRUCT_TETROMINO
+    _CALL       DRAW_TETROMINO
+
+PICK_NEW_SHAPE:
 
     ; Get a random tetromino index
     LD      HL,(RANDOM_SEED)
@@ -93,46 +125,11 @@ WAIT_START:
     LD      (IX+ST_COL),20
     LD      (IX+ST_ROW),10
 
-
-LOOP:
     _ADDLP  ACTION_DRAW           ; Draw tetromino
     _ADDRP  IX
     _CALL   DRAW_TETROMINO
 
-    LD      BC,1000
-    _ADDLP  BC
-    _CALL    SLEEP
-
-    _ADDLP  ACTION_EREASE
-    _ADDRP  IX
-    _CALL   DRAW_TETROMINO
-
-    LD      BC,1000
-    _ADDLP  BC
-    _CALL    SLEEP
-
-    JP LOOP
-
-
-GAME_LOOP:
-    CALL    GETCHAR
-    _jrlf   GAME_LOOP
-
-    CP      'w'
-    LD      B,1
-    CALL    Z,ROTATE
-
-    CP      's'
-    LD      B,-1
-    CALL    Z,ROTATE
-
-
-
-
-    JP      GAME_LOOP
-
-
-
+    RET
 
 
 ;;;;;;;;;;;;;;;;;;; ROTATE ;;;;;;;;;;;;;;;;;;;
@@ -190,12 +187,13 @@ DRAW_TETROMINO:
     ; Set the tetromino color
     _GETP       DE,DT_PARAM_ACTION
     LD          L,E                 ;
-    _jrlf       DRAW_TETROMINO_DRAW ; Jump if L is FALSE
+    _jrlf       DRAW_TETROMINO_DRAW ; Jump if L is ACTION_DRAW (which correspond to FALSE)
     LD          B,'0'
     LD          C,B
     JR          DRAW_TETROMINO_SET_COLOR
 
 DRAW_TETROMINO_DRAW:
+    LD          A,(IX+ST_SHAPE)
     ADD         '1'                 ; Convert the shape index to an ANSI color code
     LD          B,A                 ; Set the background...
     LD          C,A                 ; ...and the foreground to the same color.
