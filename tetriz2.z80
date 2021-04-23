@@ -98,11 +98,37 @@ GAME_LOOP:
     LD      B,-1
     CALL    Z,ROTATE
 
+    CP      'a'
+    LD      B,-1
+    CALL    Z,TRANSLATE
+
+    CP      'd'
+    LD      B,1
+    CALL    Z,TRANSLATE
+
     CP      ' '
     CALL    Z,EREASE_AND_PICK_NEW_SHAPE
 
     JP      GAME_LOOP
 
+
+
+TRANSLATE:
+    PUSH        AF
+    ; Erease the tetromino at its current orientation
+    _ADDLP  ACTION_EREASE   ; Erease = TRUE
+    _ADDLP  STRUCT_TETROMINO
+    _CALL   DRAW_TETROMINO
+    LD      IX,STRUCT_TETROMINO
+    LD      A,B
+    ADD     B
+    ADD     (IX+ST_COL)
+    LD      (IX+ST_COL),A
+    _ADDLP  ACTION_DRAW   ; Erease = FALSE
+    _ADDLP  STRUCT_TETROMINO
+    _CALL   DRAW_TETROMINO
+    POP     AF
+    RET
 
 
 EREASE_AND_PICK_NEW_SHAPE:
@@ -149,26 +175,23 @@ PICK_NEW_SHAPE_SET_SHAPE:
 ;;;;;;;;;;;;;;;;;;; ROTATE ;;;;;;;;;;;;;;;;;;;
 ;; Inputs: B the rotation value. 1 = clockwise, -1 = counter-clockwise
 ROTATE:
-
+    PUSH    AF
     ; Erease the tetromino at its current orientation
-    _ADDLP      ACTION_EREASE   ; Erease = TRUE
-    _ADDLP      STRUCT_TETROMINO
-    _CALL       DRAW_TETROMINO
-
+    _ADDLP  ACTION_EREASE   ; Erease = TRUE
+    _ADDLP  STRUCT_TETROMINO
+    _CALL   DRAW_TETROMINO
     ; Load the tetromino into the indexer register
     LD      IX,STRUCT_TETROMINO
     LD      A,(IX+ST_ORIENTATION)
-
     ; Do the rotation
     ADD     B
     AND     $03         ; Modulo 4
     LD      (IX+ST_ORIENTATION),A
-
     ; Draw the tetromino with its new orientation.
     _ADDLP  ACTION_DRAW
     _ADDRP  IX
     _CALL   DRAW_TETROMINO
-
+    POP     AF
     RET
     
 
