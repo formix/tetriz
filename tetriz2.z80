@@ -41,19 +41,20 @@ TETROMINOS: DEFW $E400,$4C40,$4E00,$8C80    ; Tetromino 0, orientation 0 to 3
 
 #data _HEAP
 
-RANDOM_SEED                     DEFS 2
-NEXT_TETROMINO_INDEX            DEFS 1
+RANDOM_SEED             DEFS 2
+LAST_SHAPE              DEFS 1
+NEXT_TETROMINO_INDEX    DEFS 1
 
-STRUCT_TETROMINO                DEFS 4
-ST_SHAPE                        EQU  0      ; The shape index (0-6)
-ST_ORIENTATION                  EQU  1      ; The shape orientation (0-3)
-ST_POS                          EQU  2      ; The position of the shape
-ST_COL                          EQU  2      ; The column position of the shape
-ST_ROW                          EQU  3      ; The row position of the shape
+STRUCT_TETROMINO        DEFS 4
+ST_SHAPE                EQU  0      ; The shape index (0-6)
+ST_ORIENTATION          EQU  1      ; The shape orientation (0-3)
+ST_POS                  EQU  2      ; The position of the shape
+ST_COL                  EQU  2      ; The column position of the shape
+ST_ROW                  EQU  3      ; The row position of the shape
 
-PG_HEIGHT                       EQU 20
-PG_WIDTH                        EQU 10
-PLAYGROUND:                     DEFS PG_HEIGHT * PG_WIDTH
+PG_HEIGHT               EQU 20
+PG_WIDTH                EQU 10
+PLAYGROUND:             DEFS PG_HEIGHT * PG_WIDTH
 
 
 
@@ -71,6 +72,9 @@ MAIN:
     CALL    PRINT_ENDL
 
     CALL    START_RX_INT    ;Start listening to keyboard inputs
+
+    LD      HL,LAST_SHAPE
+    LD      (HL),-1
 
 WAIT_START:
     RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
@@ -118,6 +122,16 @@ PICK_NEW_SHAPE:
     _CALL   MODULO      ; Get the tetromino index in L
     LD      A,L         ; The random tetromino index is in A
 
+    LD      HL,LAST_SHAPE
+    CP      (HL)        ; Check if the new shape is the same as the last one
+    JR      NZ,PICK_NEW_SHAPE_SET_SHAPE ; Different, set that shape
+    INC     A           ; The same, move to the next shape
+    CP      7           ; check if we rolled over
+    JR      NZ,PICK_NEW_SHAPE_SET_SHAPE ; not rolled over, pick that shape
+    LD      A,0         ; roll over
+
+PICK_NEW_SHAPE_SET_SHAPE:
+    LD      (LAST_SHAPE),A ; Save the selected shape
     ; Initialize the tetromino structure
     LD      IX,STRUCT_TETROMINO
     LD      (IX+ST_SHAPE),A
@@ -306,36 +320,4 @@ _div_hl_c_loop:
     djnz _div_hl_c_loop
     LD      L,A
     _RET_HL HL
-
-
-
-; 16-bit xorshift pseudorandom number generator by John Metcalf
-; 20 bytes, 86 cycles (excluding ret)
-; returns   hl = pseudorandom number
-; corrupts   a
-; generates 16-bit pseudorandom numbers with a period of 65535
-; using the xorshift method:
-; hl ^= hl << 7
-; hl ^= hl >> 9
-; hl ^= hl << 8
-; some alternative shift triplets which also perform well are:
-; 6, 7, 13; 7, 9, 13; 9, 7, 13.
-XRND:
-  ld hl,(RANDOM_SEED)
-  ld a,h
-  rra
-  ld a,l
-  rra
-  xor h
-  ld h,a
-  ld a,l
-  rra
-  ld a,h
-  rra
-  xor l
-  ld l,a
-  xor h
-  ld h,a
-  ld (RANDOM_SEED),hl
-  ret
 
