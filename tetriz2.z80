@@ -30,13 +30,13 @@ WELCOME     DEFB "+++ TetriZ +++",0
 PRESS_START DEFB "Press any key to start...",0
 START       DEFB "START!!!",0
 
-TETROMINOS: DEFW $E400,$4C40,$4E00,$8C80    ; Tetromino 0, orientation 0 to 3
-            DEFW $E200,$44C0,$8E00,$C880    ; Tetromino 1, orientation 0 to 3
+TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
+            DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
             DEFW $C600,$2640,$0C60,$4C80    ; Tetromino 2, orientation 0 to 3
-            DEFW $CC00,$CC00,$CC00,$CC00    ; Tetromino 3, orientation 0 to 3
-            DEFW $6C00,$8C40,$6C00,$8C40    ; Tetromino 4, orientation 0 to 3
-            DEFW $E800,$C440,$2E00,$88C0    ; Tetromino 5, orientation 0 to 3
-            DEFW $F000,$4444,$F000,$4444    ; Tetromino 6, orientation 0 to 3
+            DEFW $0CC0,$0CC0,$0CC0,$0CC0    ; Tetromino 3, orientation 0 to 3
+            DEFW $6C00,$2640,$0C60,$4C80    ; Tetromino 4, orientation 0 to 3
+            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
+            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
 
 
 #data _HEAP
@@ -259,11 +259,11 @@ DT_DRAW_ROWS:
     LD          C,4                 ; Initialize the col counter
     LD          A,(HL)              ; Load the row into A
     AND         $F0                 ; Mask the row data
-    JR          NZ,DT_DRAW_COLS     ; If A != 0, draw that row
-    DEC         B                   ; Row is empty, skip that row
-    JR          Z,DT_END            ; No more rows, we are done
-    INC         HL                  ; Move the cursor to the next row byte
-    JR          DT_DRAW_ROWS        ; Draw the next row
+    ; JR          NZ,DT_DRAW_COLS     ; If A != 0, draw that row
+    ; DEC         B                   ; Row is empty, skip that row
+    ; JR          Z,DT_END            ; No more rows, we are done
+    ; INC         HL                  ; Move the cursor to the next row byte
+    ; JR          DT_DRAW_ROWS        ; Draw the next row
 DT_DRAW_COLS:
     SLA         A
     JR          C,DT_PRINT          ; Check if the bit is set
