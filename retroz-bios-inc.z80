@@ -121,7 +121,7 @@ _PC             DEFL    0
     endm
 
 
-    macro   _jrt &addr
+    macro   _jrlt &addr
     ; jump relative if true
     ; If L == 1, JR to the specified address.
     push    bc
@@ -133,7 +133,7 @@ _PC             DEFL    0
     jr      nz,&addr
     endm
 
-    macro   _jrf &addr
+    macro   _jrlf &addr
     ; jump relative if false
     ; If L == 0, JR to the specified address.
     push    bc

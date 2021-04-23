@@ -75,7 +75,7 @@ MAIN:
 WAIT_START:
     RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
     CALL    GETCHAR
-    _jrf    WAIT_START
+    _jrlf   WAIT_START
     CALL    CLS
 
     ; Get a random tetromino index
@@ -116,7 +116,7 @@ LOOP:
 
 GAME_LOOP:
     CALL    GETCHAR
-    _jrf    GAME_LOOP
+    _jrlf   GAME_LOOP
 
     CP      'w'
     LD      B,1
@@ -165,15 +165,15 @@ ROTATE:
 
 ;;;;;;;;;;;;;;;;;;; DRAW_TETROMINO ;;;;;;;;;;;;;;;;;;;
 ; Flags for the erease parameter
-ACTION_EREASE       EQU $0101
-ACTION_DRAW         EQU $0000
+ACTION_EREASE       EQU 1
+ACTION_DRAW         EQU 0
 ; DRAW_TETROMINO's parameters
 DT_PARAM_ACTION     EQU 1   ; If LByte == 0: draw; if LByte == 1: erease
 DT_PARAM_TETROMINO  EQU 0   ; Expect the address of a tetromino structure
 ; Constant values required by the DRAW_TETROMINOS function
 DT_NEXT_LINE    DEFB ESC,"[B",ESC,"[8D",0 ;Down 1, back 8
 DT_FORWARD_2    DEFB ESC,"[2C",0
-DT_BLOCK        DEFB "  ",0
+DT_BLOCK        DEFB "##",0
 
 ; Draw a tetromino at a screen position with a given color.
 DRAW_TETROMINO:
@@ -189,16 +189,13 @@ DRAW_TETROMINO:
 
     ; Set the tetromino color
     _GETP       DE,DT_PARAM_ACTION
-    LD          A,E
-    OR          A
-    JR          Z,DRAW_TETROMINO_DRAW
+    LD          L,E                 ;
+    _jrlf       DRAW_TETROMINO_DRAW ; Jump if L is FALSE
     LD          B,'0'
     LD          C,B
     JR          DRAW_TETROMINO_SET_COLOR
 
 DRAW_TETROMINO_DRAW:
-    LD          A,(IX+ST_SHAPE)
-    LD          E,A                 ; Save the shape index for later
     ADD         '1'                 ; Convert the shape index to an ANSI color code
     LD          B,A                 ; Set the background...
     LD          C,A                 ; ...and the foreground to the same color.
@@ -208,7 +205,7 @@ DRAW_TETROMINO_SET_COLOR:
     _CALL       SET_COLOR           ; Call the set color function
 
     ; Load the shape value into DE using the shape address
-    LD          A,E
+    LD          A,(IX+ST_SHAPE)
     MUL_BY_8                        ; Convert the shape index to a byte position, each shape size being 8 bytes
     ADD         A,(IX+ST_ORIENTATION)
     ADD         A,(IX+ST_ORIENTATION) ; Sets the correct orientation (2 x orientation)
