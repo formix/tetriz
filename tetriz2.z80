@@ -1,10 +1,9 @@
 #include "layout.z80"
 #include "retroz-bios-inc.z80"
 
- MACRO RANDOMIZE
-    LD      HL,(RANDOM_SEED)
-    INC     HL
-    LD      (RANDOM_SEED),HL
+ MACRO CLOCK_TICK
+    LD      HL,TIMER_VALUE
+    INC     (HL)
  ENDM
 
  MACRO CPRINT &chr
@@ -41,7 +40,7 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
 
 #data _HEAP
 
-RANDOM_SEED             DEFS 2
+TIMER_VALUE             DEFS 2
 LAST_SHAPE              DEFS 1
 NEXT_TETROMINO_INDEX    DEFS 1
 
@@ -76,7 +75,7 @@ MAIN:
     LD      (HL),-1
 
 WAIT_START:
-    RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
+    CLOCK_TICK           ; Increments the seed by 1 while waiting for user to press a key
     CALL    GETCHAR
     _jrlf   WAIT_START
 
@@ -84,7 +83,7 @@ WAIT_START:
     CALL    PICK_NEW_SHAPE
 
 GAME_LOOP:
-    RANDOMIZE           ; Increments the seed by 1 while waiting for user to press a key
+    CLOCK_TICK           ; Increments the timer by 1 while waiting for user to press a key
 
     CALL    GETCHAR
     _jrlf   GAME_LOOP
@@ -167,7 +166,7 @@ EREASE_AND_PICK_NEW_SHAPE:
 PICK_NEW_SHAPE:
 
     ; Get a random tetromino index
-    LD      HL,(RANDOM_SEED)
+    LD      HL,(TIMER_VALUE)
     _ADDRP  HL          ; Add the random seed value as MODULO parameter 1 (divisee).
     LD      L,TETROMINO_COUNT
     _ADDRP  HL          ; Add the divisor as MODULO parameter 0 (divisor).
