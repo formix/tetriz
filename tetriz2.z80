@@ -31,9 +31,9 @@ START       DEFB "START!!!",0
 
 TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
-            DEFW $C600,$2640,$0C60,$4C80    ; Tetromino 2, orientation 0 to 3
-            DEFW $0CC0,$0CC0,$0CC0,$0CC0    ; Tetromino 3, orientation 0 to 3
-            DEFW $6C00,$2640,$0C60,$4C80    ; Tetromino 4, orientation 0 to 3
+            DEFW $0C60,$2640,$0C60,$2640    ; Tetromino 2, orientation 0 to 3
+            DEFW $CC00,$CC00,$CC00,$CC00    ; Tetromino 3, orientation 0 to 3
+            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
             DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
             DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
 
@@ -41,15 +41,15 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
 #data _HEAP
 
 TIMER_VALUE             DEFS 2
-LAST_SHAPE              DEFS 1
-NEXT_TETROMINO_INDEX    DEFS 1
+LAST_SPRITE             DEFS 1
+NEXT_SPRITE             DEFS 1
 
 STRUCT_TETROMINO        DEFS 4
-ST_SHAPE                EQU  0      ; The shape index (0-6)
-ST_ORIENTATION          EQU  1      ; The shape orientation (0-3)
-ST_POS                  EQU  2      ; The position of the shape
-ST_COL                  EQU  2      ; The column position of the shape
-ST_ROW                  EQU  3      ; The row position of the shape
+ST_SPRITE               EQU  0      ; The sprite index (0-6)
+ST_ORIENT               EQU  1      ; The sprite orientation (0-3)
+ST_POS                  EQU  2      ; The position of the sprite
+ST_COL                  EQU  2      ; The column position of the sprite
+ST_ROW                  EQU  3      ; The row position of the sprite
 
 PG_HEIGHT               EQU 20
 PG_WIDTH                EQU 10
@@ -71,11 +71,11 @@ MAIN:
 
     CALL    START_RX_INT    ;Start listening to keyboard inputs
 
-    LD      HL,LAST_SHAPE
+    LD      HL,LAST_SPRITE         
     LD      (HL),-1
 
 WAIT_START:
-    CLOCK_TICK           ; Increments the seed by 1 while waiting for user to press a key
+    CLOCK_TICK           ; Increments the seed by 1
     CALL    GETCHAR
     _jrlf   WAIT_START
 
@@ -83,7 +83,7 @@ WAIT_START:
     CALL    PICK_NEW_SHAPE
 
 GAME_LOOP:
-    CLOCK_TICK           ; Increments the timer by 1 while waiting for user to press a key
+    CLOCK_TICK           ; Increments the timer by 1
 
     CALL    GETCHAR
     _jrlf   GAME_LOOP
@@ -125,15 +125,21 @@ GAME_LOOP:
 
 MOVE_DOWN:
     PUSH        AF
+    
     ; Erease the tetromino at its current orientation
     _ADDLP  ACTION_EREASE   ; Erease = TRUE
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
+
+    ; Increment the row
     LD      IX,STRUCT_TETROMINO
     INC     (IX+ST_ROW)
-    _ADDLP  ACTION_DRAW   ; Erease = FALSE
+
+    ; Draw the tetromino at its new position
+    _ADDLP  ACTION_DRAW
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
+
     POP     AF
     RET
 
@@ -173,20 +179,20 @@ PICK_NEW_SHAPE:
     _CALL   MODULO      ; Get the tetromino index in L
     LD      A,L         ; The random tetromino index is in A
 
-    LD      HL,LAST_SHAPE
-    CP      (HL)        ; Check if the new shape is the same as the last one
-    JR      NZ,PICK_NEW_SHAPE_SET_SHAPE ; Different, set that shape
-    INC     A           ; The same, move to the next shape
+    LD      HL,LAST_SPRITE         
+    CP      (HL)        ; Check if the new sprite is the same as the last one
+    JR      NZ,PICK_NEW_SHAPE_SET_SPRITE; Different, set that sprite
+    INC     A           ; The same, move to the next sprite
     CP      7           ; check if we rolled over
-    JR      NZ,PICK_NEW_SHAPE_SET_SHAPE ; not rolled over, pick that shape
+    JR      NZ,PICK_NEW_SHAPE_SET_SPRITE; not rolled over, pick that sprite
     LD      A,0         ; roll over
 
 PICK_NEW_SHAPE_SET_SHAPE:
-    LD      (LAST_SHAPE),A ; Save the selected shape
+    LD      (LAST_SPRITE         ),A ; Save the selected sprite
     ; Initialize the tetromino structure
     LD      IX,STRUCT_TETROMINO
     LD      (IX+ST_SHAPE),A
-    LD      (IX+ST_ORIENTATION),0
+    LD      (IX+ST_ORIENT     ),0
     LD      (IX+ST_COL),20
     LD      (IX+ST_ROW),10
 
@@ -207,11 +213,11 @@ ROTATE:
     _CALL   DRAW_TETROMINO
     ; Load the tetromino into the indexer register
     LD      IX,STRUCT_TETROMINO
-    LD      A,(IX+ST_ORIENTATION)
+    LD      A,(IX+ST_ORIENT     )
     ; Do the rotation
     ADD     B
     AND     $03         ; Modulo 4
-    LD      (IX+ST_ORIENTATION),A
+    LD      (IX+ST_ORIENT     ),A
     ; Draw the tetromino with its new orientation.
     _ADDLP  ACTION_DRAW
     _ADDRP  IX
@@ -256,7 +262,7 @@ DRAW_TETROMINO:
 
 DRAW_TETROMINO_DRAW:
     LD          A,(IX+ST_SHAPE)
-    ADD         '1'                 ; Convert the shape index to an ANSI color code
+    ADD         '1'                 ; Convert the sprite index to an ANSI color code
     LD          B,A                 ; Set the background...
     LD          C,A                 ; ...and the foreground to the same color.
 
@@ -264,20 +270,20 @@ DRAW_TETROMINO_SET_COLOR:
     _ADDRP      BC                  ; Add background (B) and foreground (C) as parameters
     _CALL       SET_COLOR           ; Call the set color function
 
-    ; Load the shape value into DE using the shape address
+    ; Load the sprite value into DE using the sprite address
     LD          A,(IX+ST_SHAPE)
-    MUL_BY_8                        ; Convert the shape index to a byte position, each shape size being 8 bytes
-    ADD         A,(IX+ST_ORIENTATION)
-    ADD         A,(IX+ST_ORIENTATION) ; Sets the correct orientation (2 x orientation)
+    MUL_BY_8                        ; Convert the sprite index to a byte position, each sprite size being 8 bytes
+    ADD         A,(IX+ST_ORIENT     )
+    ADD         A,(IX+ST_ORIENT     ) ; Sets the correct orientation (2 x orientation)
     LD          HL,$0000
     LD          L,A                 ; H=0, L=A
     LD          DE,TETROMINOS
-    ADD         HL,DE               ; HL contains the shape address
+    ADD         HL,DE               ; HL contains the sprite address
     LD          E,(HL)
     INC         HL
-    LD          D,(HL)              ; DE contains the shape value
+    LD          D,(HL)              ; DE contains the sprite value
 
-    ; Create a 4 bytes array to store each shape row on the stack
+    ; Create a 4 bytes array to store each sprite row on the stack
     PUSH        HL
     PUSH        HL
 
