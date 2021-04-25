@@ -1,8 +1,10 @@
 #include "layout.z80"
 #include "retroz-bios-inc.z80"
 
+; https://tetris.wiki/
+
  MACRO CLOCK_TICK
-    LD      HL,TIMER_VALUE
+    LD      HL,GAME_CLOCK
     INC     (HL)
  ENDM
 
@@ -20,19 +22,22 @@
     AND     0b11111000
  ENDM
 
-TETROMINO_COUNT     EQU     7
-
+TETROMINO_COUNT     EQU      7
+START_COL           EQU     30
+START_ROW           EQU      2
 
 #code _DATA
 
-WELCOME     DEFB "+++ TetriZ +++",0
+WELCOME     DEFB "=TetriZ=",0
 PRESS_START DEFB "Press any key to start...",0
-START       DEFB "START!!!",0
+LABEL_LEVEL DEFB "=Level=",0
+LABEL_SCORE DEFB "=Score=",0
+LABEL_NEXT  DEFB "=Next=",0
 
 TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
             DEFW $0C60,$2640,$0C60,$2640    ; Tetromino 2, orientation 0 to 3
-            DEFW $CC00,$CC00,$CC00,$CC00    ; Tetromino 3, orientation 0 to 3
+            DEFW $0CC0,$0CC0,$0CC0,$0CC0    ; Tetromino 3, orientation 0 to 3
             DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
             DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
             DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
@@ -40,7 +45,7 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
 
 #data _HEAP
 
-TIMER_VALUE             DEFS 2
+GAME_CLOCK              DEFS 2
 LAST_SPRITE             DEFS 1
 NEXT_SPRITE             DEFS 1
 
@@ -80,11 +85,24 @@ WAIT_START:
     _jrlf   WAIT_START
 
     CALL    CLS
+    CALL    DRAW_BOARD
     CALL    PICK_NEW_SHAPE
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                              GAME LOOP                                  ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; 1 second ~ 61440 game loop                                              ;;
+;; NES Frame rate is 60 per seconds.                                       ;;
+;; 61440 / 60 = 1024, WOW!                                                 ;;
+;; 1024 loops gives pretty exactly 1 NES frame, beatiful numbers!!!        ;;
+;; To convert to a NES frame, just take the GAME_CLOCK high byte           ;;
+;; shifted right twice.                                                    ;;
+;; See the following frame time chart for level speeds:                    ;;
+;;    https://harddrop.com/wiki/Tetris_(NES,_Nintendo)                     ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GAME_LOOP:
     CLOCK_TICK           ; Increments the timer by 1
-
     CALL    GETCHAR
     _jrlf   GAME_LOOP
 
@@ -123,6 +141,60 @@ GAME_LOOP:
 
 
 
+
+DRAW_BOARD:
+    ; main board
+    _ADDLP  $0215
+    _ADDLP  $1616
+    _CALL   DRAW_RECT
+    _ADDLP  $021C
+    _CALL   SET_POS
+    _ADDLP  WELCOME
+    _CALL   PRINT
+
+    ; level
+    _ADDLP  $022C
+    _ADDLP  $030D
+    _CALL   DRAW_RECT
+    _ADDLP  $022F
+    _CALL   SET_POS
+    _ADDLP  LABEL_LEVEL
+    _CALL   PRINT
+
+    ; score
+    _ADDLP  $062C
+    _ADDLP  $030D
+    _CALL   DRAW_RECT
+    _ADDLP  $062F
+    _CALL   SET_POS
+    _ADDLP  LABEL_SCORE
+    _CALL   PRINT
+
+    ; next
+    _ADDLP  $0A2C
+    _ADDLP  $060D
+    _CALL   DRAW_RECT
+    _ADDLP  $0A2F
+    _CALL   SET_POS
+    _ADDLP  LABEL_NEXT
+    _CALL   PRINT
+
+    RET
+
+
+; The clock increments every ~120 crystal Ticks
+; ROTATE and TRANSLATE take each around 15500 crystal ticks to execute.
+; Means that each time a rotation or a translation is made, we shall
+; fast forward the clock by 15500 / 120. That accouts to around 130 game 
+; clock tick. We use 131 just for the sake of using a prime number.
+FAST_FORWARD_CLOCK:
+    LD      HL,(GAME_CLOCK)
+    LD      DE,131
+    ADD     HL,DE
+    LD      (GAME_CLOCK),HL
+    RET
+
+
 MOVE_DOWN:
     PUSH        AF
     
@@ -159,7 +231,7 @@ TRANSLATE:
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
     POP     AF
-    RET
+    JP      FAST_FORWARD_CLOCK ;Will return in that subroutine
 
 
 EREASE_AND_PICK_NEW_SHAPE:
@@ -172,7 +244,7 @@ EREASE_AND_PICK_NEW_SHAPE:
 PICK_NEW_SHAPE:
 
     ; Get a random tetromino index
-    LD      HL,(TIMER_VALUE)
+    LD      HL,(GAME_CLOCK)
     _ADDRP  HL          ; Add the random seed value as MODULO parameter 1 (divisee).
     LD      L,TETROMINO_COUNT
     _ADDRP  HL          ; Add the divisor as MODULO parameter 0 (divisor).
@@ -187,14 +259,14 @@ PICK_NEW_SHAPE:
     JR      NZ,PICK_NEW_SHAPE_SET_SPRITE; not rolled over, pick that sprite
     LD      A,0         ; roll over
 
-PICK_NEW_SHAPE_SET_SHAPE:
-    LD      (LAST_SPRITE         ),A ; Save the selected sprite
+PICK_NEW_SHAPE_SET_SPRITE:
+    LD      (LAST_SPRITE),A ; Save the selected sprite
     ; Initialize the tetromino structure
     LD      IX,STRUCT_TETROMINO
-    LD      (IX+ST_SHAPE),A
+    LD      (IX+ST_SPRITE),A
     LD      (IX+ST_ORIENT     ),0
-    LD      (IX+ST_COL),20
-    LD      (IX+ST_ROW),10
+    LD      (IX+ST_COL),START_COL
+    LD      (IX+ST_ROW),START_ROW
 
     _ADDLP  ACTION_DRAW           ; Draw tetromino
     _ADDRP  IX
@@ -223,7 +295,7 @@ ROTATE:
     _ADDRP  IX
     _CALL   DRAW_TETROMINO
     POP     AF
-    RET
+    JP      FAST_FORWARD_CLOCK ;Will return in that subroutine
     
 
 
@@ -256,12 +328,12 @@ DRAW_TETROMINO:
     _GETP       DE,DT_PARAM_ACTION
     LD          L,E                 ;
     _jrlf       DRAW_TETROMINO_DRAW ; Jump if L is ACTION_DRAW (which correspond to FALSE)
-    LD          B,'0'
+    LD          B,'0'               ; Set the color to the background color to erease
     LD          C,B
     JR          DRAW_TETROMINO_SET_COLOR
 
 DRAW_TETROMINO_DRAW:
-    LD          A,(IX+ST_SHAPE)
+    LD          A,(IX+ST_SPRITE)
     ADD         '1'                 ; Convert the sprite index to an ANSI color code
     LD          B,A                 ; Set the background...
     LD          C,A                 ; ...and the foreground to the same color.
@@ -271,7 +343,7 @@ DRAW_TETROMINO_SET_COLOR:
     _CALL       SET_COLOR           ; Call the set color function
 
     ; Load the sprite value into DE using the sprite address
-    LD          A,(IX+ST_SHAPE)
+    LD          A,(IX+ST_SPRITE)
     MUL_BY_8                        ; Convert the sprite index to a byte position, each sprite size being 8 bytes
     ADD         A,(IX+ST_ORIENT     )
     ADD         A,(IX+ST_ORIENT     ) ; Sets the correct orientation (2 x orientation)
