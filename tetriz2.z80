@@ -23,7 +23,7 @@
  ENDM
 
 TETROMINO_COUNT     EQU      7
-START_COL           EQU     30
+START_COL           EQU     35
 START_ROW           EQU      2
 
 #code _DATA
@@ -37,7 +37,7 @@ LABEL_NEXT  DEFB "=Next=",0
 TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
             DEFW $0C60,$2640,$0C60,$2640    ; Tetromino 2, orientation 0 to 3
-            DEFW $0CC0,$0CC0,$0CC0,$0CC0    ; Tetromino 3, orientation 0 to 3
+            DEFW $0660,$0660,$0660,$0660    ; Tetromino 3, orientation 0 to 3
             DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
             DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
             DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
@@ -143,38 +143,147 @@ GAME_LOOP:
 
 
 DRAW_BOARD:
+
+    ;tetromino struct
+    PUSH    HL
+    PUSH    HL
+    LD      IX,0
+    ADD     IX,SP
+
+    ; tetromino 1 stat box
+    _ADDLP  $0202                   ; at row: 1, column 2
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 0
+    LD      (IX+ST_SPRITE),0
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),5
+    LD      (IX+ST_ROW),2
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 2 stat box
+    _ADDLP  $0702                   ; at row: 7, column 2
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 1
+    LD      (IX+ST_SPRITE),1
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),5
+    LD      (IX+ST_ROW),7
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 3 stat box
+    _ADDLP  $0C02                   ; at row: 7, column 2
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 3
+    LD      (IX+ST_SPRITE),2
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),5
+    LD      (IX+ST_ROW),12
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 4 stat box
+    _ADDLP  $1102                   ; at row: 7, column 2
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 4
+    LD      (IX+ST_SPRITE),3
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),4
+    LD      (IX+ST_ROW),17
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 5 stat box
+    _ADDLP  $020F                   ; at row: 7, column 15
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 5
+    LD      (IX+ST_SPRITE),4
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),18
+    LD      (IX+ST_ROW),2
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 6 stat box
+    _ADDLP  $070F                   ; at row: 7, column 15
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 6
+    LD      (IX+ST_SPRITE),5
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),18
+    LD      (IX+ST_ROW),7
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+    ; tetromino 7 stat box
+    _ADDLP  $0C0F                   ; at row: 7, column 15
+    _ADDLP  $050C                   ; height: 5 rows, Width: 12 columns
+    _CALL   DRAW_RECT               ; Draw the box
+
+    ; Display sprite 7
+    LD      (IX+ST_SPRITE),6
+    LD      (IX+ST_ORIENT),0
+    LD      (IX+ST_COL),17
+    LD      (IX+ST_ROW),13
+    _ADDLP  ACTION_DRAW
+    _ADDRP  IX
+    _CALL    DRAW_TETROMINO
+
+
+    POP     HL
+    POP     HL
+
     ; main board
-    _ADDLP  $0215
+    _ADDLP  $021C
     _ADDLP  $1616
     _CALL   DRAW_RECT
-    _ADDLP  $021C
+    _ADDLP  $0223
     _CALL   SET_POS
     _ADDLP  WELCOME
     _CALL   PRINT
 
     ; level
-    _ADDLP  $022C
+    _ADDLP  $0233
     _ADDLP  $030D
     _CALL   DRAW_RECT
-    _ADDLP  $022F
+    _ADDLP  $0236
     _CALL   SET_POS
     _ADDLP  LABEL_LEVEL
     _CALL   PRINT
 
     ; score
-    _ADDLP  $062C
+    _ADDLP  $0633
     _ADDLP  $030D
     _CALL   DRAW_RECT
-    _ADDLP  $062F
+    _ADDLP  $0636
     _CALL   SET_POS
     _ADDLP  LABEL_SCORE
     _CALL   PRINT
 
     ; next
-    _ADDLP  $0A2C
+    _ADDLP  $0A33
     _ADDLP  $060D
     _CALL   DRAW_RECT
-    _ADDLP  $0A2F
+    _ADDLP  $0A36
     _CALL   SET_POS
     _ADDLP  LABEL_NEXT
     _CALL   PRINT
@@ -263,8 +372,8 @@ PICK_NEW_SHAPE_SET_SPRITE:
     LD      (LAST_SPRITE),A ; Save the selected sprite
     ; Initialize the tetromino structure
     LD      IX,STRUCT_TETROMINO
-    LD      (IX+ST_SPRITE),A
-    LD      (IX+ST_ORIENT     ),0
+    LD      (IX+ST_SPRITE),A        ; selected sprite
+    LD      (IX+ST_ORIENT),0
     LD      (IX+ST_COL),START_COL
     LD      (IX+ST_ROW),START_ROW
 
@@ -285,11 +394,11 @@ ROTATE:
     _CALL   DRAW_TETROMINO
     ; Load the tetromino into the indexer register
     LD      IX,STRUCT_TETROMINO
-    LD      A,(IX+ST_ORIENT     )
+    LD      A,(IX+ST_ORIENT)
     ; Do the rotation
     ADD     B
     AND     $03         ; Modulo 4
-    LD      (IX+ST_ORIENT     ),A
+    LD      (IX+ST_ORIENT),A
     ; Draw the tetromino with its new orientation.
     _ADDLP  ACTION_DRAW
     _ADDRP  IX
@@ -345,8 +454,8 @@ DRAW_TETROMINO_SET_COLOR:
     ; Load the sprite value into DE using the sprite address
     LD          A,(IX+ST_SPRITE)
     MUL_BY_8                        ; Convert the sprite index to a byte position, each sprite size being 8 bytes
-    ADD         A,(IX+ST_ORIENT     )
-    ADD         A,(IX+ST_ORIENT     ) ; Sets the correct orientation (2 x orientation)
+    ADD         A,(IX+ST_ORIENT)
+    ADD         A,(IX+ST_ORIENT)    ; Sets the correct orientation (2 x orientation)
     LD          HL,$0000
     LD          L,A                 ; H=0, L=A
     LD          DE,TETROMINOS
@@ -414,7 +523,10 @@ DT_END:
     POP         HL
     POP         HL
 
-    ; "Hide" the cursor in the top left corner
+    ; Reset all leftover attibutes and "hide" the cursor in the top left corner.
+    LD          L,ATTR_RESET
+    _ADDRP      HL
+    _CALL       SET_ATTRIBUTE
     _ADDLP      $0101
     _CALL       SET_POS
 
