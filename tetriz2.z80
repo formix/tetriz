@@ -435,7 +435,7 @@ TRY_TRANSLATE:
     SRA     A                   ; divide the remaining value by 2 to get the position in the collision table
     ADD     B
     LD      D,0                 ; init D to 0.
-    LD      E,A                 ; Save the collision table column in E, DE contains the column number
+    LD      E,A                 ; Save the collision table column in E, DE contains the column shift
     
     LD      A,(IX+ST_ROW)
     SUB     2                   ; Substract the displayed row index
@@ -446,14 +446,17 @@ TRY_TRANSLATE:
     ADD     HL,DE               ; HL contains the row and column shift
     LD      DE,COLLISION_TABLE
     ADD     HL,DE               ; HL contains the pointer to the collision table byte
-
-    LD      (HL),5
-
-    CALL    PRINT_COLLISION_TABLE
     
+    PUSH    HL
+    CALL    LOAD_SPRITE_IN_DE
+    POP     HL
+
+    LD      BC,$0404
+
     POP     BC
-    LD      L,1
     RET
+
+
 
 
 EREASE_AND_PICK_NEW_SHAPE:
@@ -564,18 +567,7 @@ DRAW_TETROMINO_SET_COLOR:
     _ADDRP      BC                  ; Add background (B) and foreground (C) as parameters
     _CALL       SET_COLOR           ; Call the set color function
 
-    ; Load the sprite value into DE using the sprite address
-    LD          A,(IX+ST_SPRITE)
-    MUL_BY_8                        ; Convert the sprite index to a byte position, each sprite size being 8 bytes
-    ADD         A,(IX+ST_ORIENT)
-    ADD         A,(IX+ST_ORIENT)    ; Sets the correct orientation (2 x orientation)
-    LD          HL,$0000
-    LD          L,A                 ; H=0, L=A
-    LD          DE,TETROMINOS
-    ADD         HL,DE               ; HL contains the sprite address
-    LD          E,(HL)
-    INC         HL
-    LD          D,(HL)              ; DE contains the sprite value
+    CALL        LOAD_SPRITE_IN_DE
 
     ; Create a 4 bytes array to store each sprite row on the stack
     PUSH        HL
@@ -645,6 +637,21 @@ DT_END:
 
     RET
 
+
+LOAD_SPRITE_IN_DE:
+    ; Load the sprite value into DE using the sprite address
+    LD          A,(IX+ST_SPRITE)
+    MUL_BY_8                        ; Convert the sprite index to a byte position, each sprite size being 8 bytes
+    ADD         A,(IX+ST_ORIENT)
+    ADD         A,(IX+ST_ORIENT)    ; Sets the correct orientation (2 x orientation)
+    LD          HL,$0000
+    LD          L,A                 ; H=0, L=A
+    LD          DE,TETROMINOS
+    ADD         HL,DE               ; HL contains the sprite address
+    LD          E,(HL)
+    INC         HL
+    LD          D,(HL)              ; DE contains the sprite value
+    RET
 
 
 ; Computes the remainder of the division.
