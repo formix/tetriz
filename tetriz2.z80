@@ -28,8 +28,8 @@ START_ROW           EQU      2
 
 #code _DATA
 
-WELCOME     DEFB "=TetriZ=",0
 PRESS_START DEFB "Press any key to start...",0
+WELCOME     DEFB "=TetriZ=",0
 LABEL_LEVEL DEFB "=Level=",0
 LABEL_SCORE DEFB "=Score=",0
 LABEL_NEXT  DEFB "=Next=",0
@@ -62,8 +62,8 @@ PG_WIDTH                EQU 10
 PLAYGROUND:             DEFS PG_HEIGHT * PG_WIDTH
 
 ; The collision and color index table
-ROW_COUNT               EQU 22
-COL_COUNT               EQU 12
+ROW_COUNT               EQU PG_HEIGHT + 2
+COL_COUNT               EQU PG_WIDTH + 2
 COLLISION_TABLE         DEFS ROW_COUNT * COL_COUNT
 
 
@@ -404,6 +404,10 @@ MOVE_DOWN:
 
 TRANSLATE:
     PUSH        AF
+    CALL        TRY_TRANSLATE
+    _jrlf       TRANSLATE_END
+    CALL        FAST_FORWARD_CLOCK
+
     ; Erease the tetromino at its current orientation
     _ADDLP  ACTION_EREASE   ; Erease = TRUE
     _ADDLP  STRUCT_TETROMINO
@@ -416,8 +420,34 @@ TRANSLATE:
     _ADDLP  ACTION_DRAW   ; Erease = FALSE
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
+
+TRANSLATE_END:
     POP     AF
     JP      FAST_FORWARD_CLOCK ;Will return in that subroutine
+
+
+TRY_TRANSLATE:
+    PUSH    BC                  ; save BC
+
+    LD      IX,STRUCT_TETROMINO
+    LD      A,(IX+ST_COL)
+    SUB     28                  ; Remove the left position of drawn table
+    SRA     A                   ; divide the remaining value by 2 to get the position in the collision table
+    LD      D,0                 ; init D to 0.
+    LD      E,A                 ; Save the collision table column in E, DE contains the column number
+    LD      A,(IZ+ST_ROW)
+    SUB     2                   ; Substract the displayed row index
+    LD      B,A                 ; Save the collision table row in B
+
+    LD      C,COL_COUNT
+    _ADDRP  BC
+    _CALL   MUL8                ; multiply the row number by the number of char per rows
+    ADD     HL,DE               ; result row adds the cumn number gives the position in the collision table in HL
+    LD      DE,COLLISION_TABLE  
+    LD      HL,DE               ; shifting to the collision table address
+    
+    POP     BC
+    RET
 
 
 EREASE_AND_PICK_NEW_SHAPE:
