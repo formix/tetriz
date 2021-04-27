@@ -91,7 +91,6 @@ WAIT_START:
 
     CALL    CLS
     CALL    INIT_COLLISION_TABLE
-    CALL    PRINT_COLLISION_TABLE
     CALL    DRAW_BOARD
     CALL    PICK_NEW_SHAPE
 
@@ -151,7 +150,7 @@ GAME_LOOP:
 PRINT_COLLISION_TABLE:
 
     LD      B,ROW_COUNT     ; 22 rows, including top and bottom borders
-    LD      DE,$0242        ; Screen destination
+    LD      DE,$0241        ; Screen destination
     LD      HL,COLLISION_TABLE
 
 PCT_PRINT_ROW:
@@ -162,6 +161,7 @@ PCT_PRINT_ROW:
 PCT_PRINT_COLS:
     LD      A,'0'
     ADD     A,(HL)
+    AND     0b01111111
     CALL    OUTA
     INC     HL
     DEC     C
@@ -176,21 +176,42 @@ PCT_PRINT_COLS_END:
 
 
 INIT_COLLISION_TABLE:
-    LD      BC,ROW_COUNT * COL_COUNT
+    LD      B,ROW_COUNT
+    LD      C,COL_COUNT
     LD      HL,COLLISION_TABLE
-    LD      D,9       ; boundary
-    LD      E,0       ; Free area
+    LD      D,0b10001001    ; boundary
+    LD      E,0b10000000    ; Free area
 
-ICT_CLEAR:
+ICT_FIRST_ROW:
+    LD      (HL),D
+    INC     HL
+    DEC     C
+    JR      NZ,ICT_FIRST_ROW
+    DEC     B
+    DEC     B           ; Decrements once more for the last row.
+
+ICT_MIDDLE_ROWS:
+    LD      C,COL_COUNT
+    LD      (HL),D
+    INC     HL
+    DEC     C
+    DEC     C           ; Decrements once more for the last column
+ICT_MIDDLE_ROW:
     LD      (HL),E
     INC     HL
-    DEC     BC
-    LD      A,C
-    OR      B
-    JR      NZ,ICT_CLEAR
+    DEC     C
+    JR      NZ,ICT_MIDDLE_ROW
+    LD      (HL),D
+    INC     HL
+    DEC     B
+    JR      NZ,ICT_MIDDLE_ROWS
 
-    LD      B,ROW_COUNT
-ICT_BOUNDS:
+    LD      C,COL_COUNT
+ICT_LAST_ROW:
+    LD      (HL),D
+    INC     HL
+    DEC     C
+    JR      NZ,ICT_LAST_ROW
 
     RET
 
@@ -341,6 +362,8 @@ DRAW_BOARD:
     _CALL   SET_POS
     _ADDLP  LABEL_NEXT
     _CALL   PRINT
+
+    CALL    PRINT_COLLISION_TABLE
 
     RET
 
