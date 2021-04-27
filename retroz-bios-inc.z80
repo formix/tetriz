@@ -3,38 +3,38 @@
 ; Version 0.7.0
 ; 2021-04-05
 
-_PC             DEFL    0               ;Parameter counter
+_PC     DEFL    0               ;Parameter counter
 
 
 ;Adds the content of &reg to the stack and increment the _PARAM_COUNT label.
-                MACRO   _ADDRP &reg
-                PUSH    &reg
-_PC             DEFL    {_PC + 1}
-                ENDM
+    MACRO   _ADDRP &reg
+    PUSH    &reg
+_PC         DEFL    {_PC + 1}
+    ENDM
 
 
 ;Adds a litteral 16 bits parameter to the stack then increment the
 ;_PARAM_COUNT label. Register values are preserved.
-                MACRO   _ADDLP &lit
-                PUSH	HL
-                LD      HL,&lit
-                EX      (SP),HL
-_PC             DEFL    {_PC + 1}
-                ENDM
+    MACRO   _ADDLP &lit
+    PUSH	HL
+    LD      HL,&lit
+    EX      (SP),HL
+_PC         DEFL {_PC + 1}
+    ENDM
 
 
 ;Macro that calls a procedure &proc. This macro cleans the stack from the
 ;parameters added with _ADD_PARAM or ADD_LPARAM. Register HL and DE may be
 ;changed if the subroutine returns respectively a 16(HL) or 32(DEHL) bits 
 ;value.
-                MACRO   _CALL &proc
-_PC_&proc       DEFL    _PC
-_PC             DEFL    0
-                CALL    _PUSH
-                CALL    &proc
-                CALL    _POP
-                _CLEANP _PC_&proc
-                ENDM
+    MACRO   _CALL &proc
+_PC_&proc   DEFL _PC
+_PC         DEFL 0
+    CALL    _PUSH
+    CALL    &proc
+    CALL    _POP
+    _CLEANP _PC_&proc
+    ENDM
 
 
 ;Recursive macro that cleans &cnt parameters from the stack.
@@ -86,64 +86,64 @@ _PC             DEFL    0
 ;;                      ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-    macro _and
+    MACRO _AND
     ; L = H && L
-    ; Z matches the boolean value of L.
-    ld      a,l         ; prepare the operation
-    and     h           ; with h
-    ld      l,a         ; get the result in l
-    endm
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    AND     H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
 
-    macro _or
+    MACRO _OR
     ; L = H || L
-    ; Z matches the boolean value of L.
-    ld      a,l         ; prepare the operation
-    or      h           ; with h
-    ld      l,a         ; get the result in l
-    endm
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
 
 
-    macro _xor
+    MACRO _XOR
     ; L = H ^ L
-    ; Z matches the boolean value of L.
-    ld      a,l         ; prepare the operation
-    xor     h           ; with h
-    ld      l,a         ; get the result in l
-    endm
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    XOR     H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
 
 
-    macro _not
+    MACRO _NOT
     ; L = !L
-    ; Z matches the boolean value of L.
-    ld      a,1         ; prepare the operation
-    xor     l           ; A = !L (XOR with 1 inverts the value)
-    ld      l,a         ; get the result in l
-    endm
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,1         ; PREPARE THE OPERATION
+    XOR     L           ; A = !L (XOR WITH 1 INVERTS THE VALUE)
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
 
 
-    macro   _jrlt &addr
-    ; jump relative if true
-    ; If L == 1, JR to the specified address.
-    push    bc
-    ld      c,a
-    ld      a,l         ; prepare the operation
-    or      a           ; Set or reset Z based on L content
-    ld      a,c
-    pop     bc
-    jr      nz,&addr
-    endm
+    MACRO   _JRLT &ADDR
+    ; JUMP RELATIVE IF TRUE
+    ; IF L == 1, JR TO THE SPECIFIED ADDRESS.
+    PUSH    BC
+    LD      C,A
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      A           ; SET OR RESET Z BASED ON L CONTENT
+    LD      A,C
+    POP     BC
+    JR      NZ,&ADDR
+    ENDM
 
-    macro   _jrlf &addr
-    ; jump relative if false
-    ; If L == 0, JR to the specified address.
-    push    bc
-    ld      c,a
-    ld      a,l         ; prepare the operation
-    or      a           ; Set or reset Z based on L content
-    ld      a,c
-    pop     bc
-    jr      z,&addr
-    endm
+    MACRO   _JRLF &ADDR
+    ; JUMP RELATIVE IF FALSE
+    ; IF L == 0, JR TO THE SPECIFIED ADDRESS.
+    PUSH    BC
+    LD      C,A
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      A           ; SET OR RESET Z BASED ON L CONTENT
+    LD      A,C
+    POP     BC
+    JR      Z,&ADDR
+    ENDM
 
 
 

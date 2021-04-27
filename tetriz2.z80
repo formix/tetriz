@@ -38,9 +38,9 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
             DEFW $0C60,$2640,$0C60,$2640    ; Tetromino 2, orientation 0 to 3
             DEFW $0660,$0660,$0660,$0660    ; Tetromino 3, orientation 0 to 3
-            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
-            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
             DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
+            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
+            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
 
 
 #data _HEAP
@@ -289,8 +289,8 @@ DRAW_BOARD:
     ; Display sprite 5
     LD      (IX+ST_SPRITE),4
     LD      (IX+ST_ORIENT),0
-    LD      (IX+ST_COL),18
-    LD      (IX+ST_ROW),2
+    LD      (IX+ST_COL),17
+    LD      (IX+ST_ROW),3
     _ADDLP  ACTION_DRAW
     _ADDRP  IX
     _CALL    DRAW_TETROMINO
@@ -317,8 +317,8 @@ DRAW_BOARD:
     ; Display sprite 7
     LD      (IX+ST_SPRITE),6
     LD      (IX+ST_ORIENT),0
-    LD      (IX+ST_COL),17
-    LD      (IX+ST_ROW),13
+    LD      (IX+ST_COL),18
+    LD      (IX+ST_ROW),12
     _ADDLP  ACTION_DRAW
     _ADDRP  IX
     _CALL    DRAW_TETROMINO
