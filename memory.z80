@@ -1,4 +1,4 @@
-    #code   _MEMORY
+    ;#code   _MEMORY
     
     ; Create space on the stack of the given &size.
     ; On exit, IY contains the start address of the new space created.
