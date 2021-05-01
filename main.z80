@@ -6,11 +6,25 @@
 #include "console_ui_1.z80"
 
 
+#code _MAIN_VALUES
+
+STR_TETRIZ      DEFB "=TetriZ=",0
+STR_PRESS_START DEFB "Press any key to start...",0
+
+
 #code _MAIN
 
 MAIN:
+
+   LD      HL,STR_TETRIZ
+   CALL    PRINT
+   CALL    PRINT_ENDL
+   CALL    PRINT_ENDL
+   LD      HL,STR_PRESS_START
+   CALL    PRINT
+
     LD      BC,3000
-    CALL    SLEEP
+    CALL    SLEEP       ; wait 3 sec
 
     CALL    CLS
     CALL    INIT_BOARD

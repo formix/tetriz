@@ -13,6 +13,7 @@ EXEC_TARGET EQU $8100
 
 #code   _HEADER
 #code   _MAIN, EXEC_TARGET
+#code   _MAIN_VALUES
 #code   _BOARD
 #code   _CONSOLE_UI
 #code   _MEMORY
