@@ -11,7 +11,8 @@ EXEC_TARGET EQU $8100
 #data   _HEAP,_DATA_end
 
 #code _HEADER
-    DEFB 0
-    DEFW _PROGRAM_size+_DATA_size
-    DEFW EXEC_TARGET
+    DEFB 0                          ; Tells the bootloader that a program is starting
+    DEFW _PROGRAM_size+_DATA_size   ; Tells the bootloader the size of the program
+    DEFW EXEC_TARGET                ; Tells the bootloader where to store the program
+
 #endif
