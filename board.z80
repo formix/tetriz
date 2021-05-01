@@ -1,5 +1,5 @@
-; -----=== Variables ===-----
-#data   _HEAP
+#code   _BOARD
+
 
 ; -----=== Constants ===-----
 
@@ -14,9 +14,7 @@ CELL_FREE               EQU 0b00000000 ; available (bit 7)
 BOARD       DEFS (BOARD_HEIGHT + 2) * (BOARD_WIDTH + 2)
 
 
-; -----=== Code ===-----
-#code   _PROGRAM_FOOTER
-
+; -----=== Subroutines ===-----
 
 ; Initialize a 12 x 22 byte table. The bit 7 of each byte indicate that the
 ; cell is occupied or not. The low nibble indicate the color of the cell.

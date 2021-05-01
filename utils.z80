@@ -1,11 +1,8 @@
-
-
-; -----=== Code ===-----
-
-#code _PROGRAM_FOOTER
+#code _UTILS
 
 
 ; -----=== Constants ===-----
+
 ONE_MS          EQU    305              ;Loops req. to reach approx 1ms.
 
 
@@ -33,7 +30,7 @@ ONE_MS          EQU    305              ;Loops req. to reach approx 1ms.
 ; which is the maximum wait time of that function. Good enough I guess...
 ;
 ; Parameter: BC: The amount of time to sleep in millisecond
-; Change A,D,E
+; Change A,B,C,D,E
 ; ***************************************************************************
 SLEEP:                                  ; 34 ticks to execute the outer loop.
                 LD      DE,ONE_MS       ; Load the inner loop count for one ms.

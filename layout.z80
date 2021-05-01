@@ -4,11 +4,24 @@ EXEC_TARGET EQU $8100
 
 #target bin
 
+;#code   _HEADER
+;#code   _PROGRAM, EXEC_TARGET
+;#code   _PROGRAM_FOOTER
+;#code   _DATA, EXEC_TARGET + _PROGRAM_size + _PROGRAM_FOOTER_size
+;#data   _HEAP,_DATA_end
+
+
 #code   _HEADER
-#code   _PROGRAM, EXEC_TARGET
-#code   _PROGRAM_FOOTER
-#code   _DATA, EXEC_TARGET + _PROGRAM_size + _PROGRAM_FOOTER_size
-#data   _HEAP,_DATA_end
+#code   _MAIN, EXEC_TARGET
+#code   _BOARD
+#code   _CONSOLE_UI
+#code   _MEMORY
+#code   _TETROMINO
+#code   _UTILS
+;#data   _MEMORY_HEAP
+
+
+
 
 #code _HEADER
     DEFB 0                          ; Tells the bootloader that a program is starting

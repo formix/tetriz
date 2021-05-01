@@ -1,9 +1,11 @@
+#code _CONSOLE_UI
+
+; -----=== Variables ===-----
+
+VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 
 
-
-; -----=== Code ===-----
-#code _PROGRAM_FOOTER
-
+; -----=== Subroutines ===-----
 
 PRINT_BOARD:
     LD      B,BOARD_HEIGHT + 2  ; Initialize the column counter
@@ -40,7 +42,6 @@ PRINT_ENDL:
 ; ***************************************************************************
 ; Clear the screen and set the cursor home.
 ; ***************************************************************************
-VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 CLS:            
     LD      HL,VT102_CLS
     JR      PRINT
