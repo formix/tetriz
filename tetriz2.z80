@@ -329,7 +329,6 @@ DRAW_BOARD:
     _ADDRP  IX
     _CALL    DRAW_TETROMINO
 
-
     POP     HL
     POP     HL
 
@@ -418,11 +417,15 @@ TRANSLATE:
     _ADDLP  ACTION_EREASE   ; Erease = TRUE
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
+    
+    ; Execute the translation
     LD      IX,STRUCT_TETROMINO
     LD      A,B
     ADD     B
     ADD     (IX+ST_COL)
     LD      (IX+ST_COL),A
+
+    ; Draw the tetromino at its new position
     _ADDLP  ACTION_DRAW   ; Erease = FALSE
     _ADDLP  STRUCT_TETROMINO
     _CALL   DRAW_TETROMINO
@@ -434,32 +437,11 @@ TRANSLATE_END:
 
 CAN_TRANSLATE:
     PUSH    BC                  ; save BC
-
     LD      IX,STRUCT_TETROMINO
-    LD      A,(IX+ST_COL)
-    SUB     27                  ; Remove the left position of drawn table
-    SRA     A                   ; divide the remaining value by 2 to get the position in the collision table
-    ADD     B
-    LD      D,0                 ; init D to 0.
-    LD      E,A                 ; Save the collision table column in E, DE contains the column shift
-    
-    LD      A,(IX+ST_ROW)
-    SUB     2                   ; Substract the displayed row index
-    LD      B,A                 ; Save the collision table row in B
-    LD      C,COL_COUNT
-    _ADDRP  BC
-    _CALL   MUL8                ; HL contains the row shift
-    ADD     HL,DE               ; HL contains the row and column shift
-    LD      DE,COLLISION_TABLE
-    ADD     HL,DE               ; HL contains the pointer to the collision table byte
-    
-    PUSH    HL
     CALL    LOAD_SPRITE_IN_DE
-    POP     HL
-
-    LD      BC,$0404
 
     POP     BC                  ; restore BC
+    LD      L,1
     RET
 
 
