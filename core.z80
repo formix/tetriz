@@ -1,53 +1,26 @@
 #include "layout.z80"
-#include "retroz-bios-inc.z80"
-
-
-; -----=== Macros ===-----
-
-    ; Create space on the stack of the given &size.
-    ; On exit, IY contains the start address of the new space created.
-    MACRO MALLOC &size
-    LD      IY,&size    ; prepare to increment SP by &size
-    ADD     IY,SP       ; Add the SP address to IY to move the stack pointer by the required size
-    LD      SP,IY       ; Set the stack pointer value to its new position
-    ENDM
-
-    ; Delete space created on the stack by a previous call to MALLOC
-    ; IY is set to the new stack pointer (SP) value.
-    MACRO DEALLOC &size
-    LD      IY,-&size   ; prepare to decrement SP by &size
-    ADD     IY,SP       ; Add the SP address to IY to move the stack pointer by the required size
-    LD      SP,IY       ; Set the stack pointer value to its new position
-    ENDM
-
-
-; -----=== Constants ===-----
-
-; Define the game board size
-BOARD_HEIGHT            EQU 20
-BOARD_WIDTH             EQU 10
-
-; Define constants for the tetromnio sprite structure
-TETROMINO_STRUCT        EQU 6   ; The size of a tetromino sprite structure. Will be used with MALLOC and DEALLOC.
-TETROMINO_INDEX         EQU 0   ; 1b, values [0,6]. There is seven tetrominos.
-TETROMINO_ORIENT        EQU 1   ; 1b, values [0,3]. There is four possible directions.
-TETROMINO_ROW           EQU 2   ; 1b, the row where the tetromino sprite is drawn in the board.
-TETROMINO_COL           EQU 3   ; 1b, the columne where the tetromino sprite will be drawn.
-TETROMINO_DATA          EQU 4   ; 2b, the tetromino value from the TETROMINOS given the current index and orientation.
-
-
-#code _DATA
-
-TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 to 3
-            DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino index 1, orientation 0 to 3
-            DEFW $0C60,$2640,$0C60,$2640    ; Tetromino index 2, orientation 0 to 3
-            DEFW $0660,$0660,$0660,$0660    ; Tetromino index 3, orientation 0 to 3
-            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino index 6, orientation 0 to 3
-            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino index 5, orientation 0 to 3
-            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino index 4, orientation 0 to 3
+#include "bios.z80"
+#include "memory.z80"
+#include "board.z80"
+#include "tetromino.z80"
+#include "utils.z80"
+#include "console_ui_1.z80"
 
 
 
-#data _HEAP
+
+#code _PROGRAM
+
+MAIN:
+    LD      BC,3000
+    CALL    SLEEP
+
+    CALL    CLS
+    CALL    INIT_BOARD
+    CALL    PRINT_BOARD
+
+GAME_LOOP:
+    JP GAME_LOOP
+
 
 

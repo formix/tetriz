@@ -1,0 +1,61 @@
+; -----=== Variables ===-----
+#data   _HEAP
+
+; -----=== Constants ===-----
+
+; Define the game board size
+BOARD_HEIGHT            EQU 20
+BOARD_WIDTH             EQU 10
+
+CELL_BOUNDARY           EQU 0b10000000 ; blocked (bit 7)
+CELL_FREE               EQU 0b00000000 ; available (bit 7)
+
+; Reserve the board space, including a surrounding border
+BOARD       DEFS (BOARD_HEIGHT + 2) * (BOARD_WIDTH + 2)
+
+
+; -----=== Code ===-----
+#code   _PROGRAM_FOOTER
+
+
+; Initialize a 12 x 22 byte table. The bit 7 of each byte indicate that the
+; cell is occupied or not. The low nibble indicate the color of the cell.
+; Valid colors are between 0 and 7. The bit 3 indicate that the cell must not
+; be painted if it is set.
+INIT_BOARD:
+    LD      HL,BOARD
+    LD      D,0b10001000        ; boundary value: 136 dec or $88 hex
+    LD      E,0b00000000        ; Free area value 0
+
+; The first row is filled with boundary values
+    LD      C,BOARD_WIDTH+2
+IB_FIRST_ROW:
+    LD      (HL),D              ; Paint a boundary cell
+    INC     HL                  ; Move to the next cell
+    DEC     C                   ; One left column to paint.
+    JR      NZ,IB_FIRST_ROW     ; Jump if we are not done painting
+
+    LD      B,BOARD_HEIGHT
+IB_MIDDLE_ROWS:                 ; Middle rows are bonded left and right and free inside.
+    LD      C,BOARD_WIDTH       ; Reset the column counter
+    LD      (HL),D              ; Set the left byte to a blocked cell
+    INC     HL                  ; Move to the next cell
+IB_CENTRAL_CELL:
+    LD      (HL),E              ; Paint middle column with a free cell.
+    INC     HL                  ; Move to the next cell
+    DEC     C                   ; Decrement the column counter.
+    JR      NZ,IB_CENTRAL_CELL  ; Jump to the next cell if we are not done.
+    LD      (HL),D              ; Done with central cell, paint the right boundary.
+    INC     HL                  ; move to the next row
+    DEC     B                   ; Decrement the row counter
+    JR      NZ,IB_MIDDLE_ROWS  ; If there is more middle row, jump to do the next one.
+
+
+    LD      C,BOARD_WIDTH+2 ; Reset the column counter
+IB_LAST_ROW:           ; The last row is filled with boundary values
+    LD      (HL),D      ; Paint the cell as a boundary
+    INC     HL          ; Move to the next cell.
+    DEC     C           ; Decrement the cell counter.
+    JR      NZ,IB_LAST_ROW ; Continue painting cells until done.
+
+    RET                 ; GTFO

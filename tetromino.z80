@@ -1,0 +1,22 @@
+#code _DATA
+
+; -----=== Constants ===-----
+
+; Define constants for the tetromnio structure
+TETROMINO_STRUCT        EQU 6   ; The size of a tetromino structure. Will be used with MALLOC and DEALLOC.
+TETROMINO_INDEX         EQU 0   ; 1b, values [0,6]. There is seven tetrominos.
+TETROMINO_ORIENT        EQU 1   ; 1b, values [0,3]. There is four possible orientations.
+TETROMINO_ROW           EQU 2   ; 1b, the row where the tetromino is drawn in the board.
+TETROMINO_COL           EQU 3   ; 1b, the columne where the tetromino will be drawn.
+TETROMINO_DATA          EQU 4   ; 2b, the tetromino value from the TETROMINOS given the current index and orientation.
+
+
+; -----=== Variables ===-----
+
+TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 to 3
+            DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino index 1, orientation 0 to 3
+            DEFW $0C60,$2640,$0C60,$2640    ; Tetromino index 2, orientation 0 to 3
+            DEFW $0660,$0660,$0660,$0660    ; Tetromino index 3, orientation 0 to 3
+            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino index 6, orientation 0 to 3
+            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino index 5, orientation 0 to 3
+            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino index 4, orientation 0 to 3

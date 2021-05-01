@@ -1,0 +1,59 @@
+
+
+
+; -----=== Code ===-----
+#code _PROGRAM_FOOTER
+
+
+PRINT_BOARD:
+    LD      B,BOARD_HEIGHT + 2  ; Initialize the column counter
+    LD      HL,BOARD            ; Put the board address into HL
+PB_PRINT_ROW:
+    LD      C,BOARD_WIDTH + 2   ; Initialize the column counter
+PB_PRINT_COLS:
+    LD      A,'0'               ; Prepare a to convert the binary cell value to the matching character
+    ADD     A,(HL)              ; Add the cell value to '0'
+    AND     0b01111111          ; Mask the blocked cell bit to get a valid character.
+    CALL    OUTA                ; print the character
+    INC     HL                  ; Move to the next board cell
+    DEC     C                   ; decrement the column count.
+    JR      NZ,PB_PRINT_COLS    ; Jump to print the next cell
+PB_PRINT_COLS_END:
+    CALL    PRINT_ENDL          ; The row is completely printed, move to next line
+    DEC     B                   ; Decrement the row counter
+    JR      NZ,PB_PRINT_ROW     ; Jump to print the next row if not done yet
+    RET
+
+
+
+; ***************************************************************************
+; Print end of line (\r\n)
+; ***************************************************************************
+PRINT_ENDL:     
+    LD      A,10
+    CALL    OUTA
+    LD      A,13
+    CALL    OUTA
+    RET
+
+
+; ***************************************************************************
+; Clear the screen and set the cursor home.
+; ***************************************************************************
+VT102_CLS       DEFB    27,"[0m",27,"[2J",0
+CLS:            
+    LD      HL,VT102_CLS
+    JR      PRINT
+
+
+; ***************************************************************************
+; Prints the NULL terminated string pointed by the parameter HL by calling
+; OUTA. OUTA is expected to be implemented in another module.
+; ***************************************************************************
+PRINT:
+    LD      A,(HL)          ;Reads the next character
+    OR      A               ;Check if that character is null.
+    RET     Z               ;If the null char is reached, exit.
+    CALL    OUTA            ;Print the character and 
+    INC     HL              ;move to the next char.
+    JR      PRINT           ;Print the next char

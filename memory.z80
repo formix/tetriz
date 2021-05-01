@@ -1,0 +1,15 @@
+    ; Create space on the stack of the given &size.
+    ; On exit, IY contains the start address of the new space created.
+    MACRO MALLOC &size
+    LD      IY,&size    ; prepare to increment SP by &size
+    ADD     IY,SP       ; Add the SP address to IY to move the stack pointer by the required size
+    LD      SP,IY       ; Set the stack pointer value to its new position
+    ENDM
+
+    ; Delete space created on the stack by a previous call to MALLOC
+    ; IY is set to the new stack pointer (SP) value.
+    MACRO DEALLOC &size
+    LD      IY,-&size   ; prepare to decrement SP by &size
+    ADD     IY,SP       ; Add the SP address to IY to move the stack pointer by the required size
+    LD      SP,IY       ; Set the stack pointer value to its new position
+    ENDM
