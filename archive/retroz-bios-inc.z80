@@ -1,0 +1,225 @@
+#if !defined(_PC)
+
+; Version 0.7.0
+; 2021-04-05
+
+_PC     DEFL    0               ;Parameter counter
+
+
+;Adds the content of &reg to the stack and increment the _PARAM_COUNT label.
+    MACRO   _ADDRP &reg
+    PUSH    &reg
+_PC         DEFL    {_PC + 1}
+    ENDM
+
+
+;Adds a litteral 16 bits parameter to the stack then increment the
+;_PARAM_COUNT label. Register values are preserved.
+    MACRO   _ADDLP &lit
+    PUSH	HL
+    LD      HL,&lit
+    EX      (SP),HL
+_PC         DEFL {_PC + 1}
+    ENDM
+
+
+;Macro that calls a procedure &proc. This macro cleans the stack from the
+;parameters added with _ADD_PARAM or ADD_LPARAM. Register HL and DE may be
+;changed if the subroutine returns respectively a 16(HL) or 32(DEHL) bits 
+;value.
+    MACRO   _CALL &proc
+_PC_&proc   DEFL _PC
+_PC         DEFL 0
+    CALL    _PUSH
+    CALL    &proc
+    CALL    _POP
+    _CLEANP _PC_&proc
+    ENDM
+
+
+;Recursive macro that cleans &cnt parameters from the stack.
+    MACRO   _CLEANP &cnt
+    IF &cnt > 0
+      EX      (SP),HL
+      POP     HL
+      _CLEANP {&cnt - 1}
+    ENDIF
+    ENDM
+
+
+;Loads the register &reg with the parameter at index &idx
+;Since IY is used to get at parameters, its not possible to load
+;a parameter into IY using this macro. First parameter is at index 0.
+    MACRO   _GETP &reg, &idx
+    LD      IY,14
+    ADD     IY,SP
+    LD      &reg, (IY+{&idx * 2})
+    ENDM
+
+
+;Return the content of &reg1 at the stack position of HL. The content of IY
+;can not be returned using this macro.
+    MACRO   _RET_HL &reg1
+    LD      IY,0
+    ADD     IY,SP
+    LD      (IY+12),&reg1
+    RET
+    ENDM
+
+
+
+;Return the content of &reg1 at the stack position of HL and the
+;content of &reg2 at the DE stack position. The content of IX or IY cannot
+;be returned by this macro.
+    MACRO   _RET_DEHL &reg1, &reg2
+    LD      IY,0
+    ADD     IY,SP
+    LD      (IY+12),&reg1
+    LD      (IY+10),&reg2
+    RET
+    ENDM
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                      ;;
+;;  BOOLEAN OPERATIONS  ;;
+;;                      ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+    MACRO _AND
+    ; L = H && L
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    AND     H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
+
+    MACRO _OR
+    ; L = H || L
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
+
+
+    MACRO _XOR
+    ; L = H ^ L
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,L         ; PREPARE THE OPERATION
+    XOR     H           ; WITH H
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
+
+
+    MACRO _NOT
+    ; L = !L
+    ; Z MATCHES THE BOOLEAN VALUE OF L.
+    LD      A,1         ; PREPARE THE OPERATION
+    XOR     L           ; A = !L (XOR WITH 1 INVERTS THE VALUE)
+    LD      L,A         ; GET THE RESULT IN L
+    ENDM
+
+
+    MACRO   _JRLT &ADDR
+    ; JUMP RELATIVE IF TRUE
+    ; IF L == 1, JR TO THE SPECIFIED ADDRESS.
+    PUSH    BC
+    LD      C,A
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      A           ; SET OR RESET Z BASED ON L CONTENT
+    LD      A,C
+    POP     BC
+    JR      NZ,&ADDR
+    ENDM
+
+    MACRO   _JRLF &ADDR
+    ; JUMP RELATIVE IF FALSE
+    ; IF L == 0, JR TO THE SPECIFIED ADDRESS.
+    PUSH    BC
+    LD      C,A
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      A           ; SET OR RESET Z BASED ON L CONTENT
+    LD      A,C
+    POP     BC
+    JR      Z,&ADDR
+    ENDM
+
+
+
+#endif
+
+
+; +++ global symbols +++
+
+ATTR_BLINK                      EQU     $0035
+ATTR_BRIGHT                     EQU     $0031
+ATTR_DIM                        EQU     $0032
+ATTR_HIDDEN                     EQU     $0038
+ATTR_RESET                      EQU     $0030
+ATTR_REVERSE                    EQU     $0037
+ATTR_UNDERSCORE                 EQU     $0034
+BC_DIVBY_DE                     EQU     $02DD
+CHAR_HANDLER                    EQU     $8045
+CLEAR_CHAR_BUFFER               EQU     $01BB
+CLS                             EQU     $01DE
+COLOR_BLACK                     EQU     $0030
+COLOR_BLUE                      EQU     $0034
+COLOR_CYAN                      EQU     $0036
+COLOR_GREEN                     EQU     $0032
+COLOR_MAGENTA                   EQU     $0035
+COLOR_RED                       EQU     $0031
+COLOR_WHITE                     EQU     $0037
+COLOR_YELLOW                    EQU     $0033
+DIV16                           EQU     $02DD
+DRAW_LINE                       EQU     $0422
+DRAW_RECT                       EQU     $049D
+DRAW_ROW                        EQU     $045E
+eq16                            EQU     $0714
+eq32                            EQU     $074D
+eq8                             EQU     $06EA
+ESC                             EQU     $001B
+FALSE                           EQU     $0000
+GETCHAR                         EQU     $017F
+gt16                            EQU     $072A
+gt32                            EQU     $078B
+gt8                             EQU     $06FA
+gte16                           EQU     $0742
+gte32                           EQU     $07C9
+gte8                            EQU     $070B
+INPA                            EQU     $00F4
+INPB                            EQU     $0116
+INPC                            EQU     $013A
+ITOA                            EQU     $02FA
+load32                          EQU     $07F5
+lt16                            EQU     $071F
+lt32                            EQU     $076C
+lt8                             EQU     $06F2
+lte16                           EQU     $0736
+lte32                           EQU     $07AA
+lte8                            EQU     $0702
+MEMDUMP                         EQU     $0589
+MUL16                           EQU     $022C
+MUL8                            EQU     $0201
+MUL_BC_DE_DEHL                  EQU     $022C
+OUTA                            EQU     $00DE
+OUTB                            EQU     $0100
+OUTC                            EQU     $0122
+_POP                            EQU     $06E0
+PRINT_ENDL                      EQU     $01B0
+PRINT                           EQU     $01C9
+_PUSH                           EQU     $06D6
+PUTCHAR                         EQU     $0161
+RTS_OFF                         EQU     $00A1
+RTS_ON                          EQU     $00AA
+save32                          EQU     $07E8
+SET_ATTRIBUTE                   EQU     $0381
+SET_COLOR                       EQU     $034E
+SET_POS                         EQU     $03A1
+SIOA                            EQU     $0001
+SIOB                            EQU     $0003
+SLEEP                           EQU     $01E4
+START_RX_INT                    EQU     $00B3
+STOP_RX_INT                     EQU     $00BC
+TOHEX                           EQU     $0694
+TRUE                            EQU     $0001
