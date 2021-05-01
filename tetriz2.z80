@@ -175,45 +175,51 @@ PCT_PRINT_COLS_END:
     RET
 
 
+; Initialize a 12 x 22 byte table. The bit 7 of each byte indicate that the
+; cell is occupied or not. The low nibble indicate the color of the cell.
+; Valid colors are between 0 and 7. The bit 3 indicate that the cell must not
+; be painted if it is set.
 INIT_COLLISION_TABLE:
-    LD      B,ROW_COUNT
-    LD      C,COL_COUNT
+    LD      B,ROW_COUNT         ; I guess we coud make it work by not counting boundary rows and
+    LD      C,COL_COUNT         ; columns but well get back on optimization once everything works.
     LD      HL,COLLISION_TABLE
-    LD      D,0b10001001    ; boundary
-    LD      E,0b10000000    ; Free area
+    LD      D,0b10001000        ; boundary value: 136 dec or $88 hex
+    LD      E,0b00000000        ; Free area value 0
 
+; The first row is filled with boundary values
 ICT_FIRST_ROW:
-    LD      (HL),D
-    INC     HL
-    DEC     C
-    JR      NZ,ICT_FIRST_ROW
-    DEC     B
+    LD      (HL),D      ; Paint a boundary cell
+    INC     HL          ; Move to the next cell
+    DEC     C           ; One left column to paint.
+    JR      NZ,ICT_FIRST_ROW    ; Jump if we are not done painting
+    DEC     B           ; First row done, decrement the row count.
     DEC     B           ; Decrements once more for the last row.
 
-ICT_MIDDLE_ROWS:
-    LD      C,COL_COUNT
-    LD      (HL),D
-    INC     HL
-    DEC     C
-    DEC     C           ; Decrements once more for the last column
-ICT_MIDDLE_ROW:
-    LD      (HL),E
-    INC     HL
-    DEC     C
-    JR      NZ,ICT_MIDDLE_ROW
-    LD      (HL),D
-    INC     HL
-    DEC     B
-    JR      NZ,ICT_MIDDLE_ROWS
+ICT_MIDDLE_ROWS:        ; Middle rows are bonded left and right and free inside.
+    LD      C,COL_COUNT ; Reset the column counter
+    LD      (HL),D      ; Set the left byte to a blocked cell
+    INC     HL          ; Move to the next cell
+    DEC     C           ; Decrement for the cell we just "painted"
+    DEC     C           ; Decrements once more to stop before the last column
+ICT_CENTRAL_CELL:
+    LD      (HL),E      ; Paint middle column with a free cell.
+    INC     HL          ; Move to the next cell
+    DEC     C           ; Decrement the column counter.
+    JR      NZ,ICT_CENTRAL_CELL ; Jump to the next cell if we are not done.
+    LD      (HL),D      ; Done with central cell, paint the right boundary.
+    INC     HL          ; move to the next row
+    DEC     B           ; Decrement the row counter
+    JR      NZ,ICT_MIDDLE_ROWS  ; If there is more middle row, jump to do the next one.
 
-    LD      C,COL_COUNT
-ICT_LAST_ROW:
-    LD      (HL),D
-    INC     HL
-    DEC     C
-    JR      NZ,ICT_LAST_ROW
 
-    RET
+    LD      C,COL_COUNT ; Reset the column counter
+ICT_LAST_ROW:           ; The last row is filled with boundary values
+    LD      (HL),D      ; Paint the cell as a boundary
+    INC     HL          ; Move to the next cell.
+    DEC     C           ; Decrement the cell counter.
+    JR      NZ,ICT_LAST_ROW ; Continue painting cells until done.
+
+    RET                 ; GTFO, we are done.
 
 
 
@@ -404,7 +410,7 @@ MOVE_DOWN:
 
 TRANSLATE:
     PUSH        AF
-    CALL        TRY_TRANSLATE
+    CALL        CAN_TRANSLATE
     _jrlf       TRANSLATE_END
     CALL        FAST_FORWARD_CLOCK
 
@@ -426,7 +432,7 @@ TRANSLATE_END:
     JP      FAST_FORWARD_CLOCK ;Will return in that subroutine
 
 
-TRY_TRANSLATE:
+CAN_TRANSLATE:
     PUSH    BC                  ; save BC
 
     LD      IX,STRUCT_TETROMINO
@@ -453,7 +459,7 @@ TRY_TRANSLATE:
 
     LD      BC,$0404
 
-    POP     BC
+    POP     BC                  ; restore BC
     RET
 
 
