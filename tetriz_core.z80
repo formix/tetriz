@@ -1,0 +1,13 @@
+#include "layout.z80"
+#include "retroz-bios-inc.z80"
+
+
+#code _DATA
+
+TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino 0, orientation 0 to 3
+            DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino 1, orientation 0 to 3
+            DEFW $0C60,$2640,$0C60,$2640    ; Tetromino 2, orientation 0 to 3
+            DEFW $0660,$0660,$0660,$0660    ; Tetromino 3, orientation 0 to 3
+            DEFW $0F00,$4444,$0F00,$4444    ; Tetromino 6, orientation 0 to 3
+            DEFW $0E80,$C440,$2E00,$4460    ; Tetromino 5, orientation 0 to 3
+            DEFW $06C0,$4620,$06C0,$4620    ; Tetromino 4, orientation 0 to 3
