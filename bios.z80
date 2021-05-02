@@ -1,0 +1,17 @@
+
+
+GETCHAR         EQU $017F
+START_RX_INT    EQU $00B3
+
+
+    MACRO   _JRLF &ADDR
+    ; JUMP RELATIVE IF FALSE
+    ; IF L == 0, JR TO THE SPECIFIED ADDRESS.
+    PUSH    BC
+    LD      C,A
+    LD      A,L         ; PREPARE THE OPERATION
+    OR      A           ; SET OR RESET Z BASED ON L CONTENT
+    LD      A,C
+    POP     BC
+    JR      Z,&ADDR
+    ENDM
