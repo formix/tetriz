@@ -37,35 +37,49 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 t
 ;           - HL: The random value used to select the current tetromino and the next one.
 ; Changes: IX,A,B,C,D,E,H,L
 INIT_TETROMINO_AND_NEXT:
-    PUSH    HL                  ; Save the random value parameter
-    LD      C,TETROMINO_COUNT   ; Divisor for the modulo subroutine
-    CALL    MODULO              ; A = RandomValue % TETROMINO_COUNT
-    LD      L,A                 ; Set the tetromino shape index parameter for INIT_TETROMINO
-    CALL    INIT_TETROMINO      ; Initialize the TETROMINO_SPRITE
-    POP     HL                  ; Get the random value back in HL
-    LD      A,H                 ; Swap the random value bytes through A
-    LD      H,L
-    LD      L,A                 ; HL = SwappedRandomValue
-    LD      C,TETROMINO_COUNT   ; Divisor for the modulo subroutine
-    CALL    MODULO              ; A = SwappedRandomValue % TETROMINO_COUNT
-    LD      (NEXT_TETROMINO),A  ; Save the next tetromino shape index in NEXT_TETROMINO
-    RET
+    CALL    INIT_TETROMINO
+    SWAPHL
+    JP      INIT_NEXT_TETROMINO
 
 ; Initialize the global tetromino sprite with the specified shape index at orientation 0.
 ; Params:
-;       - L: Shape index
-; Changes: IX,A,H,L,DE
+;       - HL: The shape index.
+; Changes: A,B,C,D,E,IX
 INIT_TETROMINO:
+    PUSH    HL
+    LD      C,TETROMINO_COUNT
+    CALL    MODULO                      ; 0 <= A < TETROMINO_COUNT
     LD      H,0
     LD      IX,TETROMINO_SPRITE
-    LD      (IX+TETROMINO_INDEX),L
+    LD      (IX+TETROMINO_INDEX),A
     LD      (IX+TETROMINO_ORIENT),H
     LD      (IX+TETROMINO_ROW),1
     LD      (IX+TETROMINO_COL),4
     CALL    GET_TETROMINO_DATA
     LD      (IX+TETROMINO_DATA),DE
+    POP     HL
     RET
 
+
+; Initialize the next tetromino sprint index with the specified shape index. Does a modulo
+; Params:
+;       - HL: The shape index.
+; Changes: A,B,C,D,E,IX
+INIT_NEXT_TETROMINO:
+    PUSH    HL
+    LD      C,TETROMINO_COUNT
+    CALL    MODULO                      ; 0 <= A < TETROMINO_COUNT
+    LD      IX,TETROMINO_SPRITE
+    CP      (IX+TETROMINO_INDEX)        ; check if A is the same as the current tetromino
+    JR      NZ,INIT_NEXT_TETROMINO_OK   ; not the same, jump
+    INC     A                           ; Same, increment A
+    CP      7                           ; check if eq 7
+    JR      NZ,INIT_NEXT_TETROMINO_OK   ; not eq 7, jump
+    XOR     A                           ; roll over to 0
+INIT_NEXT_TETROMINO_OK:
+    LD      (NEXT_TETROMINO),A
+    POP     HL
+    RET
 
 ; Return the tetrmonio data for the given shape index and orientation.
 ; Params:

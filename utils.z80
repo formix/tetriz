@@ -8,6 +8,11 @@
     AND     0b11111000
     ENDM
 
+    MACRO SWAPHL
+    LD      A,H
+    LD      H,L
+    LD      L,A
+    ENDM
 
 
 ; -----=== Constants ===-----
@@ -132,32 +137,34 @@ HEXA            DEFB    "0123456789abcdef"
 ;       Return: The output string address in HL
 ; 
 ; ***************************************************************************
-ITOA:           ADD     HL,BC           ; Put HL after the end of the buffer.
-                DEC     HL              ; Move HL at the end of str buffer.
-                LD      (HL),0          ; Put a NULL terminason string in HL.
-                PUSH    IX
-                POP     BC              ; Get the 16 bit number in BC
+ITOA:           
+    ADD     HL,BC           ; Put HL after the end of the buffer.
+    DEC     HL              ; Move HL at the end of str buffer.
+    LD      (HL),0          ; Put a NULL terminason string in HL.
+    PUSH    IX
+    POP     BC              ; Get the 16 bit number in BC
 
-                ; Do the modulo operation with the base to get the character
-                ; index in the HEXA array (see above in the _DATA code segment).
-ITOA_DECODE:    PUSH    DE              ; Save the conversion base 
-                PUSH    HL              ; Save current string position.
-                CALL    BC_DIVBY_DE     ; Divide the value by the conv. base.
-                                        ; Now: HL=remainder, BC=quotient.
+    ; Do the modulo operation with the base to get the character
+    ; index in the HEXA array (see above in the _DATA code segment).
+ITOA_DECODE:    
+    PUSH    DE              ; Save the conversion base 
+    PUSH    HL              ; Save current string position.
+    CALL    BC_DIVBY_DE     ; Divide the value by the conv. base.
+                            ; Now: HL=remainder, BC=quotient.
 
-                ; The caracter index in HL, we now have to add it to the stack.
-                LD      DE,HEXA         ; Load the HEXA string address into DE 
-                ADD     HL,DE           ; Move HL to the hex char address
-                LD      A,(HL)          ; Get the digit into A and
-                POP     HL              ; Get back the string position
-                DEC     HL              ; Moves string pointer one char
-                LD      (HL),A          ; Put the digit in string target (HL)
-                POP     DE              ; Restore the conversion base
+    ; The caracter index in HL, we now have to add it to the stack.
+    LD      DE,HEXA         ; Load the HEXA string address into DE 
+    ADD     HL,DE           ; Move HL to the hex char address
+    LD      A,(HL)          ; Get the digit into A and
+    POP     HL              ; Get back the string position
+    DEC     HL              ; Moves string pointer one char
+    LD      (HL),A          ; Put the digit in string target (HL)
+    POP     DE              ; Restore the conversion base
 
-                ; BC now contains the quotient, which is the new value we want
-                ; to divide by the base for the next iteration.
-                LD      A,C
-                OR      B
-                JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
+    ; BC now contains the quotient, which is the new value we want
+    ; to divide by the base for the next iteration.
+    LD      A,C
+    OR      B
+    JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
 
-                RET
+    RET

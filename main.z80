@@ -11,7 +11,6 @@
 
 GAME_CLOCK      DEFS 2
 
-
 #code _MAIN_VALUES
 
 STR_TETRIZ      DEFB "=TetriZ=",0
@@ -21,10 +20,10 @@ STR_PRESS_START DEFB "Press any key to start...",0
 #code _MAIN
 
     MACRO CLOCK_TICK
-    LD      HL,GAME_CLOCK
-    INC     (HL)
+    LD      HL,(GAME_CLOCK)
+    INC     HL
+    LD      (GAME_CLOCK),HL
     ENDM
-
 
 MAIN:
 
@@ -43,14 +42,17 @@ MAIN_WAIT_KEY:
     CALL    GETCHAR
     _JRLF   MAIN_WAIT_KEY   ; Jumps back to MAIN_WAIT_KEY if no char read
 
+    ; Initialize the game and print the game layout
     CALL    CLS
+    LD      HL,(GAME_CLOCK)
     CALL    INIT_TETROMINO_AND_NEXT
     CALL    INIT_BOARD
     CALL    PRINT_BOARD
+    CALL    PRINT_STATUS
 
-GAME_LOOP:
+MAIN_GAME_LOOP:
     CLOCK_TICK
-    JP GAME_LOOP
+    JP MAIN_GAME_LOOP
 
 
 

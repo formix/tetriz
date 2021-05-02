@@ -1,9 +1,9 @@
 
 #data _CONSOLE_UI_VARIABLES
 
-STR_POS_LEN     EQU     4
-STR_POS         DEFS    STR_POS_LEN
-
+STR_POS_LEN     EQU  4
+STR_POS         DEFS STR_POS_LEN
+STR_GAME_CLOCK  DEFS 6
 
 #code _CONSOLE_UI
 
@@ -16,6 +16,11 @@ ESC             EQU 27
 VT102_CLS       DEFB ESC,"[0m",27,"[2J",0
 VT102_HOME      DEFB ESC,"[H",0
 
+STR_CLOCK_LABEL     DEFB "         Clock: ",0
+STR_TETROMINO       DEFB "     Tetromino: ",0
+STR_NEXT_TETROMINO  DEFB "Next Tetromino: ",0
+STR_MODULO_LABEL    DEFB "        Modulo: ",0
+STR_ORIENT          DEFB "   Orientation: ",0
 
 ; -----=== Subroutines ===-----
 
@@ -41,6 +46,44 @@ PB_PRINT_COLS_END:
 
 
 PRINT_STATUS:
+
+    LD      B,1                 ; Row 1
+    LD      C,15                ; Col 15
+    CALL    SET_POS             ; at position BC
+    LD      HL, STR_CLOCK_LABEL
+    CALL    PRINT
+
+    LD      HL,STR_GAME_CLOCK   ; Target string buffer
+    LD      BC,6                ; Target string buffer length
+    LD      IX,(GAME_CLOCK)     ; The value to convert
+    LD      DE,10               ; The numeric base
+    CALL    ITOA
+    CALL    PRINT
+
+    LD      IY,TETROMINO_SPRITE
+    LD      B,2                 ; Row 2
+    LD      C,15                ; Col 15
+    CALL    SET_POS             ; at position BC
+    LD      HL, STR_TETROMINO
+    CALL    PRINT
+    LD      A,(IY+TETROMINO_INDEX)
+    CALL    PRINTA
+
+    LD      B,3                 ; Row 3
+    LD      C,15                ; Col 15
+    CALL    SET_POS             ; at position BC
+    LD      HL, STR_ORIENT
+    CALL    PRINT
+    LD      A,(IY+TETROMINO_ORIENT)
+    CALL    PRINTA
+
+    LD      B,4                 ; Row 3
+    LD      C,15                ; Col 15
+    CALL    SET_POS             ; at position BC
+    LD      HL, STR_NEXT_TETROMINO
+    CALL    PRINT
+    LD      A,(NEXT_TETROMINO)
+    CALL    PRINTA
 
     RET
 
@@ -80,13 +123,23 @@ PRINT:
     INC     HL              ;move to the next char.
     JR      PRINT           ;Print the next char
 
+
+; Print the single digit binary number as a single char number on screen.
+PRINTA:
+    ADD     '0'     ; Convert A to a character
+    CALL    OUTA    ; Print that character
+    SUB     '0'     ; Restore A's original value
+    RET
+
 ; ***************************************************************************
 ; Sets the cursor postion at B,C (row,col)
 ;       Param B: row
 ;       Param C: col
-; Changes: A,B,C,D,E,H,L,IXH,IXL
+; Changes: A,B,C,D,E,H,L
 ; ***************************************************************************
 SET_POS:        
+    PUSH    IX
+
     ;Start the VT102 sequence
     LD      A,ESC
     CALL    OUTA
@@ -120,4 +173,6 @@ SET_POS:
     ;Print the VT102 set position terminal char
     LD      A,"H"
     CALL    OUTA
+
+    POP     IX
     RET
