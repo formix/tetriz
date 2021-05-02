@@ -1,12 +1,12 @@
 #code _UTILS
 
 
- MACRO MULA_BY_8
+    MACRO MULA_BY_8
     RLA
     RLA
     RLA
     AND     0b11111000
- ENDM
+    ENDM
 
 
 
@@ -72,3 +72,92 @@ DIV_HL_C_LOOP:
    INC	L
    DJNZ	DIV_HL_C_LOOP
    RET
+
+
+; ***************************************************************************
+; Divides two WORD parameters and return the remainder in HL.
+;       Inputs: divided: WORD, the divided number.
+;               divisor: WORD, the divisor number.
+;       Outputs: The remainder in HL.
+;                The quotien in BC.
+; ***************************************************************************
+BC_DIVBY_DE:
+; Source http://z80-heaven.wikidot.com/advanced-math#toc29
+; BC/DE ==> BC, remainder in HL
+; NOTE: BC/0 returns 0 as the quotient.
+; min: 1072cc
+; max: 1232cc
+; avg: 1152cc
+; 28 bytes
+                XOR A
+                LD H,A
+                LD L,A
+                SUB E
+                LD E,A
+                SBC A,A
+                SUB D
+                LD D,A
+                LD A,B
+                LD B,16
+
+DIV16_LOOP:
+;shift the bits from BC into HL
+                RL C
+                RLA
+                ADC HL,HL
+                ADD HL,DE
+                JR C,DIV16_LOOP_DONE
+                SBC HL,DE
+
+DIV16_LOOP_DONE:
+                DJNZ DIV16_LOOP
+                RL C
+                RLA
+                LD B,A
+                RET
+
+
+; Hexadecimal values used by ITOA
+HEXA            DEFB    "0123456789abcdef"
+
+; ***************************************************************************
+; Convert the value in BC to a null terminated string of base DE.
+; The memory block pointed by IX is expected to be large enough to hold the 
+; number plus the terminating NULL character.
+;
+;       Input:  HL) The output string buffer.
+;               BC) The output string buffer length.
+;               IX) The 16 bit number to convert to a string.
+;               DE) The conversion base (2,8,10 or 16).
+;       Return: The output string address in HL
+; 
+; ***************************************************************************
+ITOA:           ADD     HL,BC           ; Put HL after the end of the buffer.
+                DEC     HL              ; Move HL at the end of str buffer.
+                LD      (HL),0          ; Put a NULL terminason string in HL.
+                PUSH    IX
+                POP     BC              ; Get the 16 bit number in BC
+
+                ; Do the modulo operation with the base to get the character
+                ; index in the HEXA array (see above in the _DATA code segment).
+ITOA_DECODE:    PUSH    DE              ; Save the conversion base 
+                PUSH    HL              ; Save current string position.
+                CALL    BC_DIVBY_DE     ; Divide the value by the conv. base.
+                                        ; Now: HL=remainder, BC=quotient.
+
+                ; The caracter index in HL, we now have to add it to the stack.
+                LD      DE,HEXA         ; Load the HEXA string address into DE 
+                ADD     HL,DE           ; Move HL to the hex char address
+                LD      A,(HL)          ; Get the digit into A and
+                POP     HL              ; Get back the string position
+                DEC     HL              ; Moves string pointer one char
+                LD      (HL),A          ; Put the digit in string target (HL)
+                POP     DE              ; Restore the conversion base
+
+                ; BC now contains the quotient, which is the new value we want
+                ; to divide by the base for the next iteration.
+                LD      A,C
+                OR      B
+                JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
+
+                RET

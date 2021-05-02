@@ -1,10 +1,20 @@
+
+#data _CONSOLE_UI_VARIABLES
+
+STR_POS_LEN     EQU     4
+STR_POS         DEFS    STR_POS_LEN
+
+
 #code _CONSOLE_UI
 
-
 ; -----=== Constants ===-----
+ESC             EQU 27
 
-VT102_CLS       DEFB    27,"[0m",27,"[2J",0
-VT102_HOME      DEFB    27,"[H",0
+
+; -----=== Values ===-----
+
+VT102_CLS       DEFB ESC,"[0m",27,"[2J",0
+VT102_HOME      DEFB ESC,"[H",0
 
 
 ; -----=== Subroutines ===-----
@@ -29,6 +39,10 @@ PB_PRINT_COLS_END:
     JR      NZ,PB_PRINT_ROW     ; Jump to print the next row if not done yet
     RET
 
+
+PRINT_STATUS:
+
+    RET
 
 
 ; ***************************************************************************
@@ -66,3 +80,44 @@ PRINT:
     INC     HL              ;move to the next char.
     JR      PRINT           ;Print the next char
 
+; ***************************************************************************
+; Sets the cursor postion at B,C (row,col)
+;       Param B: row
+;       Param C: col
+; Changes: A,B,C,D,E,H,L,IXH, IXL
+; ***************************************************************************
+SET_POS:        
+    ;Start the VT102 sequence
+    LD      A,ESC
+    CALL    OUTA
+    LD      A,"["
+    CALL    OUTA
+
+    ;Print the row
+    PUSH    BC              ;Save the position
+    LD      IXL,B           ;Put the row value in IXL
+    LD      IXH,0           ;IX now contains the row value
+    LD      DE,10           ;Add the base parameter
+    LD      BC,STR_POS_LEN  ;Add the string buf length
+    LD      HL,STR_POS      ;Add the buffer address
+    CALL    ITOA            ;Convert the row value to a string
+    CALL    PRINT           ;Print the string of the row value
+    POP     BC              ;Restore the position in BC
+
+    ;Print the VT102 row-col separator
+    LD      A,";"
+    CALL    OUTA
+
+    ;Print the col
+    LD      IXL,C           ;Put the col value in IXL
+    LD      IXH,0           ;IX now contains the row value
+    LD      DE,10           ;Add the base parameter
+    LD      BC,STR_POS_LEN  ;Add the string buf length
+    LD      HL,STR_POS      ;Add the buffer address
+    CALL   ITOA            ;Convert the row value to a string
+    CALL   PRINT           ;Print the string of the row value
+
+    ;Print the VT102 set position terminal char
+    LD      A,"H"
+    CALL    OUTA
+    RET

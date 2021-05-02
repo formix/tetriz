@@ -11,6 +11,8 @@ CELL_BOUNDARY           EQU 0b10000000 ; blocked (bit 7)
 CELL_FREE               EQU 0b00000000 ; available (bit 7)
 
 
+; -----=== Variables ===-----
+
 ; Reserve the board space, including a surrounding border
 BOARD       DEFS (BOARD_HEIGHT + 2) * (BOARD_WIDTH + 2)
 
