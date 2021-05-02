@@ -11,7 +11,7 @@ TETROMINO_COL           EQU 3   ; 1b, the columne where the tetromino will be dr
 TETROMINO_DATA          EQU 4   ; 2b, the tetromino value from the TETROMINOS given the current index and orientation.
 
 
-; -----=== Variables ===-----
+; -----=== Data ===-----
 
 TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino index 1, orientation 0 to 3

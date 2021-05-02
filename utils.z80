@@ -32,15 +32,34 @@ ONE_MS          EQU    305              ;Loops req. to reach approx 1ms.
 ; Parameter: BC: The amount of time to sleep in millisecond
 ; Change A,B,C,D,E
 ; ***************************************************************************
-SLEEP:                                  ; 34 ticks to execute the outer loop.
-                LD      DE,ONE_MS       ; Load the inner loop count for one ms.
-SLEEP_INNER:                            ; 24 clock ticks required for a pass. 
-                DEC     DE
-                LD      A,D
-                OR      E
-                JP      NZ,SLEEP_INNER
-                DEC     BC
-                LD      A,B
-                OR      C
-                JP      NZ,SLEEP
-                RET
+SLEEP:                      ; 34 ticks to execute the outer loop.
+    LD      DE,ONE_MS       ; Load the inner loop count for one ms.
+SLEEP_INNER:                ; 24 clock ticks required for a pass. 
+    DEC     DE
+    LD      A,D
+    OR      E
+    JP      NZ,SLEEP_INNER
+    DEC     BC
+    LD      A,B
+    OR      C
+    JP      NZ,SLEEP
+    RET
+
+
+
+; Divide HL by C.
+; Returns the quotient in HL and the remainder in A.
+; Changes A,B,C,H,L
+MODULO:
+   XOR	A
+   LD	B, 16
+DIV_HL_C_LOOP:
+   ADD	HL, HL
+   RLA
+   JR	C, $+5
+   CP	C
+   JR	C, $+4
+   SUB	C
+   INC	L
+   DJNZ	DIV_HL_C_LOOP
+   RET

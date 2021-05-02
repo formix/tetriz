@@ -7,6 +7,17 @@
 #include "bios.z80"
 
 
+    MACRO CLOCK_TICK
+    LD      HL,GAME_CLOCK
+    INC     (HL)
+    ENDM
+
+
+#data _MAIN_VARIABLES
+
+GAME_CLOCK      DEFS 2
+
+
 #code _MAIN_VALUES
 
 STR_TETRIZ      DEFB "=TetriZ=",0
@@ -17,6 +28,7 @@ STR_PRESS_START DEFB "Press any key to start...",0
 
 MAIN:
 
+    ; Print the game title
     LD      HL,STR_TETRIZ
     CALL    PRINT
     CALL    PRINT_ENDL
@@ -24,9 +36,10 @@ MAIN:
     LD      HL,STR_PRESS_START
     CALL    PRINT
 
-    CALL    START_RX_INT    ;Start listening to keyboard inputs
+    CALL    START_RX_INT    ; Start listening to keyboard inputs
 
 MAIN_WAIT_KEY:
+    CLOCK_TICK
     CALL    GETCHAR
     _JRLF   MAIN_WAIT_KEY   ; Jumps back to MAIN_WAIT_KEY if no char read
 
@@ -35,6 +48,7 @@ MAIN_WAIT_KEY:
     CALL    PRINT_BOARD
 
 GAME_LOOP:
+    CLOCK_TICK
     JP GAME_LOOP
 
 

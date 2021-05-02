@@ -4,31 +4,26 @@ EXEC_TARGET EQU $8100
 
 #target bin
 
-;#code   _HEADER
-;#code   _PROGRAM, EXEC_TARGET
-;#code   _PROGRAM_FOOTER
-;#code   _DATA, EXEC_TARGET + _PROGRAM_size + _PROGRAM_FOOTER_size
-;#data   _HEAP,_DATA_end
+#code _HEADER
+#code _MAIN, EXEC_TARGET
+#code _MAIN_VALUES
+#code _BOARD
+#code _CONSOLE_UI
+#code _MEMORY
+#code _TETROMINO
+#code _UTILS
 
-
-#code   _HEADER
-#code   _MAIN, EXEC_TARGET
-#code   _MAIN_VALUES
-#code   _BOARD
-#code   _CONSOLE_UI
-#code   _MEMORY
-#code   _TETROMINO
-#code   _UTILS
-#data   _BOARD_DATA, _UTILS_end
-
+#data _MAIN_VARIABLES, _UTILS_end
+#data _BOARD_VARIABLES
+#data _TETROMINO_VARIABLS
 
 
 
 #code _HEADER
-    .PHASE  EXEC_TARGET - 5
 
     DEFB 0                  ; Tells the bootloader that a program is starting
     DEFW _UTILS_end - _MAIN ; Tells the bootloader the size of the program
     DEFW EXEC_TARGET        ; Tells the bootloader where to store the program
+
 
 #endif
