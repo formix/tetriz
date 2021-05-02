@@ -12,11 +12,13 @@ SIOA		EQU     $01		; SIO A data port
 ; -----=== Variables ===-----
 
 VT102_CLS       DEFB    27,"[0m",27,"[2J",0
+VT102_HOME      DEFB    27,"[H",0
 
 
 ; -----=== Subroutines ===-----
 
 PRINT_BOARD:
+    CALL    HOME                ; Bring the cursor back to 1,1
     LD      B,BOARD_HEIGHT + 2  ; Initialize the column counter
     LD      HL,BOARD            ; Put the board address into HL
 PB_PRINT_ROW:
@@ -53,6 +55,10 @@ PRINT_ENDL:
 ; ***************************************************************************
 CLS:            
     LD      HL,VT102_CLS
+    JR      PRINT
+
+HOME:
+    LD      HL,VT102_HOME
     JR      PRINT
 
 
