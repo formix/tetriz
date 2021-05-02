@@ -1,4 +1,6 @@
-#code _TETROMINO
+
+
+#data _TETROMINO_VARIABLES
 
 ; -----=== Constants ===-----
 
@@ -10,8 +12,15 @@ TETROMINO_ROW           EQU 2   ; 1b, the row where the tetromino is drawn in th
 TETROMINO_COL           EQU 3   ; 1b, the columne where the tetromino will be drawn.
 TETROMINO_DATA          EQU 4   ; 2b, the tetromino value from the TETROMINOS given the current index and orientation.
 
+TETROMINO_COUNT         EQU 7   ; The number of tetromino shapes.
 
-; -----=== Data ===-----
+; -----=== Variables ===-----
+
+TETROMINO_SPRITE    DEFS TETROMINO_STRUCT
+NEXT_TETROMINO      DEFS 1
+
+
+#code _TETROMINO
 
 TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 to 3
             DEFW $0E20,$44C0,$8E00,$6440    ; Tetromino index 1, orientation 0 to 3
@@ -20,3 +29,58 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 t
             DEFW $0F00,$4444,$0F00,$4444    ; Tetromino index 6, orientation 0 to 3
             DEFW $0E80,$C440,$2E00,$4460    ; Tetromino index 5, orientation 0 to 3
             DEFW $06C0,$4620,$06C0,$4620    ; Tetromino index 4, orientation 0 to 3
+
+
+; Initialize the tetromino sprite and the next tetromino using the random value
+; in HL.
+; Params:
+;           - HL: The random value used to select the current tetromino and the next one.
+; Changes: IX,A,B,C,D,E,H,L
+INIT_TETROMINO_AND_NEXT:
+    PUSH    HL                  ; Save the random value parameter
+    LD      C,TETROMINO_COUNT   ; Divisor for the modulo subroutine
+    CALL    MODULO              ; A = RandomValue % TETROMINO_COUNT
+    LD      L,A                 ; Set the tetromino shape index parameter for INIT_TETROMINO
+    CALL    INIT_TETROMINO      ; Initialize the TETROMINO_SPRITE
+    POP     HL                  ; Get the random value back in HL
+    LD      A,H                 ; Swap the random value bytes through A
+    LD      H,L
+    LD      L,A                 ; HL = SwappedRandomValue
+    LD      C,TETROMINO_COUNT   ; Divisor for the modulo subroutine
+    CALL    MODULO              ; A = SwappedRandomValue % TETROMINO_COUNT
+    LD      (NEXT_TETROMINO),A  ; Save the next tetromino shape index in NEXT_TETROMINO
+    RET
+
+; Initialize the global tetromino sprite with the specified shape index at orientation 0.
+; Params:
+;       - L: Shape index
+; Changes: IX,A,H,L,DE
+INIT_TETROMINO:
+    LD      H,0
+    LD      IX,TETROMINO_SPRITE
+    LD      (IX+TETROMINO_INDEX),L
+    LD      (IX+TETROMINO_ORIENT),H
+    LD      (IX+TETROMINO_ROW),1
+    LD      (IX+TETROMINO_COL),4
+    CALL    GET_TETROMINO_DATA
+    LD      (IX+TETROMINO_DATA),DE
+    RET
+
+
+; Return the tetrmonio data for the given shape index and orientation.
+; Params:
+;           - H: Shape orientation
+;           - L: Shape index
+; Returns:
+;           DE: The shape data for a given orientation.
+; Changes: A,H,L,D,E
+GET_TETROMINO_DATA:
+    LD      A,L                         ; Put the sprite index in A
+    MULA_BY_8                           ; Multiply the sprite index by 8.
+    LD      A,H                         ; Add the address shift for the given orientation.    
+    LD      A,H                         ; Since each shape is 16 bits, need to shift twice.
+    LD      L,A                         ; L = sprite address shift
+    LD      DE,TETROMINOS
+    ADD     HL,DE                       ; HL = shape address at orientation 0.
+    LD      DE,(HL)
+    RET

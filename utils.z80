@@ -1,6 +1,15 @@
 #code _UTILS
 
 
+ MACRO MULA_BY_8
+    RLA
+    RLA
+    RLA
+    AND     0b11111000
+ ENDM
+
+
+
 ; -----=== Constants ===-----
 
 ONE_MS          EQU    305              ;Loops req. to reach approx 1ms.

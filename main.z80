@@ -1,10 +1,10 @@
 #include "layout.z80"
+#include "bios.z80"
+#include "utils.z80"
 #include "memory.z80"
 #include "board.z80"
 #include "tetromino.z80"
-#include "utils.z80"
 #include "console_ui_1.z80"
-#include "bios.z80"
 
 
     MACRO CLOCK_TICK
@@ -44,6 +44,7 @@ MAIN_WAIT_KEY:
     _JRLF   MAIN_WAIT_KEY   ; Jumps back to MAIN_WAIT_KEY if no char read
 
     CALL    CLS
+    CALL    INIT_TETROMINO_AND_NEXT
     CALL    INIT_BOARD
     CALL    PRINT_BOARD
 
