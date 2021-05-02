@@ -137,7 +137,7 @@ HEXA            DEFB    "0123456789abcdef"
 ;       Return: The output string address in HL
 ; 
 ; ***************************************************************************
-ITOA:           
+ITOA:
     ADD     HL,BC           ; Put HL after the end of the buffer.
     DEC     HL              ; Move HL at the end of str buffer.
     LD      (HL),0          ; Put a NULL terminason string in HL.
@@ -167,4 +167,25 @@ ITOA_DECODE:
     OR      B
     JR      NZ,ITOA_DECODE  ; Decode the next char if not zero.
 
+    ; POP     HL
     RET
+
+
+; ; Same as ITOA but right align the number based on the buf size.
+; ITOA2:
+;     PUSH    HL
+;     PUSH    BC
+; ITOA_FILL_WITH_SPACES
+;     LD      (HL),' '
+;     DEC     BC
+;     LD      A,B
+;     OR      C
+;     JR      NZ,ITOA_FILL_WITH_SPACES
+;     POP     BC
+;     POP     HL
+
+;     PUSH    HL
+;     CALL    ITOA
+;     POP     HL
+
+;     RET
