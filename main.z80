@@ -4,6 +4,7 @@
 #include "tetromino.z80"
 #include "utils.z80"
 #include "console_ui_1.z80"
+#include "bios.z80"
 
 
 #code _MAIN_VALUES
@@ -16,15 +17,18 @@ STR_PRESS_START DEFB "Press any key to start...",0
 
 MAIN:
 
-   LD      HL,STR_TETRIZ
-   CALL    PRINT
-   CALL    PRINT_ENDL
-   CALL    PRINT_ENDL
-   LD      HL,STR_PRESS_START
-   CALL    PRINT
+    LD      HL,STR_TETRIZ
+    CALL    PRINT
+    CALL    PRINT_ENDL
+    CALL    PRINT_ENDL
+    LD      HL,STR_PRESS_START
+    CALL    PRINT
 
-    LD      BC,3000
-    CALL    SLEEP       ; wait 3 sec
+    CALL    START_RX_INT    ;Start listening to keyboard inputs
+
+MAIN_WAIT_KEY:
+    CALL    GETCHAR
+    _JRLF   MAIN_WAIT_KEY   ; Jumps back to MAIN_WAIT_KEY if no char read
 
     CALL    CLS
     CALL    INIT_BOARD
