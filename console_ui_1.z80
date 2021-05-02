@@ -3,14 +3,6 @@
 
 ; -----=== Constants ===-----
 
-SIOA_C      EQU     $00		; SIO A control port
-SIOA		EQU     $01		; SIO A data port
-;SIOB_C      EQU     $02		; SIO B control port
-;SIOB        EQU     $03		; SIO B data port
-
-
-; -----=== Variables ===-----
-
 VT102_CLS       DEFB    27,"[0m",27,"[2J",0
 VT102_HOME      DEFB    27,"[H",0
 
@@ -74,22 +66,3 @@ PRINT:
     INC     HL              ;move to the next char.
     JR      PRINT           ;Print the next char
 
-
-; ***************************************************************************
-; Sends the content of register A to SIOA.
-; ***************************************************************************
-OUTA:
-	PUSH    AF              ; Store character
-WAIT_TXA:        
-	SUB     A				; Wait for previous transmission to end
-	OUT     (SIOA_C),A
-	IN      A,(SIOA_C)
-	BIT     2,A             ; Set Zero flag if transmitting a character
-	JR      Z,WAIT_TXA      ; Loop if still transmitting character
-	BIT		3,A             ; Set zero flag if no data carrier is detected
-	JR		Z,WAIT_TXA      ; Loop if no carrier detected.
-	BIT		5,A             ; Set zero flag if not clear to send
-	JR		Z,WAIT_TXA      ; Loop if not clear to send.
-	POP     AF              ; Retrieve character
-	OUT     (SIOA),A      	; Output the character
-	RET

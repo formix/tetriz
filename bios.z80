@@ -1,6 +1,7 @@
 
 
 GETCHAR         EQU $017F
+OUTA            EQU $00DE
 START_RX_INT    EQU $00B3
 
 
