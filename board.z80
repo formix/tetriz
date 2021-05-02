@@ -63,3 +63,10 @@ IB_LAST_ROW:           ; The last row is filled with boundary values
     JR      NZ,IB_LAST_ROW ; Continue painting cells until done.
 
     RET                 ; GTFO
+
+
+; Load the tetromino in IX into the board.
+LOAD_TETROMINO:
+    LD      HL,BOARD
+    
+    RET
