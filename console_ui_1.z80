@@ -84,7 +84,7 @@ PRINT:
 ; Sets the cursor postion at B,C (row,col)
 ;       Param B: row
 ;       Param C: col
-; Changes: A,B,C,D,E,H,L,IXH, IXL
+; Changes: A,B,C,D,E,H,L,IXH,IXL
 ; ***************************************************************************
 SET_POS:        
     ;Start the VT102 sequence
