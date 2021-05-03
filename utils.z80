@@ -189,3 +189,29 @@ ITOA_DECODE:
 ;     POP     HL
 
 ;     RET
+
+
+; ***************************************************************************
+; Multiply the two byte parameters and return the result in a word.
+;       Inputs: D and E
+;       Returns: The multiplication result in HL.
+;
+; I started implementing this myself and ended up copying that code 
+; (and comments) from a website I forgot. Quite similar to what I did, 
+; except for the stack parameters extraction. If you are the author of these
+; lines please email me and I'll give you credit here.
+; ***************************************************************************
+MUL8:
+    LD      A,D
+    LD      HL,0            ; set accumulator to 0
+    LD      D,H             ; (makes adding 'E' to 'accumulator' easier)
+MUL8_LOOP:      
+    OR      A               ; while a is not 0, then:
+    RET     Z               ; we are done.
+    RRA                     ; shift A right, carrying out the bottom bit
+    JR      NC,MUL8_SKIP    ; if 1 is carried out:
+    ADD     HL,DE           ; add E to the accumulator
+MUL8_SKIP:
+    SLA     E               ; shift E to the left, shifting in 0.
+    RL      D               
+    JR      MUL8_LOOP

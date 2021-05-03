@@ -13,8 +13,8 @@ ESC             EQU 27
 
 ; -----=== Values ===-----
 
-VT102_CLS       DEFB ESC,"[0m",27,"[2J",0
-VT102_HOME      DEFB ESC,"[H",0
+VT102_CLS           DEFB ESC,"[0m",27,"[2J",0
+VT102_HOME          DEFB ESC,"[H",0
 
 STR_CLOCK_LABEL     DEFB "         Clock: ",0
 STR_TETROMINO       DEFB "     Tetromino: ",0
