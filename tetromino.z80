@@ -5,12 +5,12 @@
 ; -----=== Constants ===-----
 
 ; Define constants for the tetromnio structure
-TETROMINO_STRUCT        EQU 6   ; The size of a tetromino structure. Will be used with MALLOC and DEALLOC.
-TETROMINO_INDEX         EQU 0   ; 1b, values [0,6]. There is seven tetrominos.
-TETROMINO_ORIENT        EQU 1   ; 1b, values [0,3]. There is four possible orientations.
-TETROMINO_ROW           EQU 2   ; 1b, the row where the tetromino is drawn in the board.
-TETROMINO_COL           EQU 3   ; 1b, the columne where the tetromino will be drawn.
-TETROMINO_DATA          EQU 4   ; 2b, the tetromino value from the TETROMINOS given the current index and orientation.
+TETROMINO_STRUCT        EQU 20  ; The size of a tetromino structure. Will be used with MALLOC and DEALLOC.
+TETROMINO_INDEX         EQU  0  ; 1b, values [0,6]. There is seven tetrominos.
+TETROMINO_ORIENT        EQU  1  ; 1b, values [0,3]. There is four possible orientations.
+TETROMINO_ROW           EQU  2  ; 1b, the row where the tetromino is drawn in the board.
+TETROMINO_COL           EQU  3  ; 1b, the columne where the tetromino will be drawn.
+TETROMINO_DATA          EQU  4  ; 16b, the tetromino value from the TETROMINOS given the current index and orientation.
 
 TETROMINO_COUNT         EQU 7   ; The number of tetromino shapes.
 
@@ -83,6 +83,7 @@ INIT_NEXT_TETROMINO_OK:
 
 ; Return the tetrmonio data for the given shape index and orientation.
 ; Params:
+;           - IX: The tetromino sprite
 ;           - H: Shape orientation
 ;           - L: Shape index
 ; Returns:
@@ -94,7 +95,29 @@ GET_TETROMINO_DATA:
     LD      A,H                         ; Add the address shift for the given orientation.    
     LD      A,H                         ; Since each shape is 16 bits, need to shift twice.
     LD      L,A                         ; L = sprite address shift
-    LD      DE,TETROMINOS
+    LD      DE,TETROMINOS               ; Put tetromino address in DE
     ADD     HL,DE                       ; HL = shape address at orientation 0.
-    LD      DE,(HL)
-    RET
+
+    LD      DE,(HL)                     ; DE contains the compressed tetromino data
+    LD      HL,(IX+TETROMINO_DATA)      ; HL contains the target address for decompressed data
+
+    LD      A,D                         ; Put the first byte to decompress in A
+    LD      C,2                         ; Load the byte counter
+GET_TETROMINO_DATA_BYTE:
+    LD      B,8                         ; Load the bit counter
+GET_TETROMINO_DATA_BIT:
+    RLA                                 ; Put the leftmost bit of A in the carry flag
+    LD      (HL),0                      ; Set the current byte to 0
+    JR      Z,GET_TETROMINO_DATA_ZERO   ; Check if the current bit is set
+    PUSH    AF                          ; Save the byte being decompressed
+    LD      A,(IX+TETROMINO_INDEX)      ; Load the tetromino index into A
+    LD      (HL),A                      ; The bit is set, set the current byte to the tetromino index
+    POP     AF                          ; Restores the byte being decompressed
+GET_TETROMINO_DATA_ZERO:
+    INC     HL                          ; Advance one byte into the decompressed sprite buffer.
+    DJNZ    GET_TETROMINO_DATA_BIT      ; Loop until all bits are scanned
+    LD      A,E                         ; Load the next byte in A
+    DEC     C                           ; Byte done, remove it from the counter
+    JR      NZ,GET_TETROMINO_DATA_BYTE  ; Jump to make the second byte if that's where we are at
+
+    RET                                 
