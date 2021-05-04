@@ -84,40 +84,41 @@ INIT_NEXT_TETROMINO_OK:
 ; Return the tetrmonio data for the given shape index and orientation.
 ; Params:
 ;           - IX: The tetromino sprite
-;           - H: Shape orientation
-;           - L: Shape index
+;           - H: Tetromino orientation (sprite shift)
+;           - L: Tetromino index
 ; Returns:
 ;           DE: The shape data for a given orientation.
-; Changes: A,H,L,D,E
+; Changes: A,B,C,D,E,H,L
 GET_TETROMINO_DATA:
-    LD      A,L                         ; Put the sprite index in A
-    MULA_BY_8                           ; Multiply the sprite index by 8.
-    LD      A,H                         ; Add the address shift for the given orientation.    
-    LD      A,H                         ; Since each shape is 16 bits, need to shift twice.
-    LD      L,A                         ; L = sprite address shift
-    LD      DE,TETROMINOS               ; Put tetromino address in DE
-    ADD     HL,DE                       ; HL = shape address at orientation 0.
+    LD      A,L                         ; Put the tetromino index in A
+    MULA_BY_8                           ; Multiply the tetromino index by 8 (each tetromino is 8 byte).
+    ADD     H                           ; Add the sprite shift (orientation) to the tetromino index    
+    ADD     H                           ; Since each sprite is 2 bytes long, repeat
+    LD      H,0                         ; Reset H
+    LD      L,A                         ; HL = sprite address
+    LD      DE,TETROMINOS               ; Put tetromino base array address in DE
+    ADD     HL,DE                       ; HL = TetrominoArrayAddress + SpriteShift => Sprite address
 
-    LD      DE,(HL)                     ; DE contains the compressed tetromino data
-    LD      HL,(IX+TETROMINO_DATA)      ; HL contains the target address for decompressed data
+    LD      DE,(HL)                     ; DE = compressed tetromino data
+    LD      HL,(IX+TETROMINO_DATA)      ; HL = decompressed tetromino data array
 
     LD      A,D                         ; Put the first byte to decompress in A
     LD      C,2                         ; Load the byte counter
 GET_TETROMINO_DATA_BYTE:
     LD      B,8                         ; Load the bit counter
 GET_TETROMINO_DATA_BIT:
-    RLA                                 ; Put the leftmost bit of A in the carry flag
-    LD      (HL),0                      ; Set the current byte to 0
-    JR      Z,GET_TETROMINO_DATA_ZERO   ; Check if the current bit is set
-    PUSH    AF                          ; Save the byte being decompressed
-    LD      A,(IX+TETROMINO_INDEX)      ; Load the tetromino index into A
-    LD      (HL),A                      ; The bit is set, set the current byte to the tetromino index
+    RLA                                 ; Set the carry flag to the next sprite cell value
+    LD      (HL),0                      ; Set the current decompressed data byte to 0
+    JR      Z,GET_TETROMINO_DATA_ZERO   ; Check if the current sprite cell is filled or empty
+    PUSH    AF                          ; Save the sprite byte being decompressed
+    LD      A,(IX+TETROMINO_INDEX)      ; A = tetromino index
+    LD      (HL),A                      ; Set the current byte to the tetromino index
     POP     AF                          ; Restores the byte being decompressed
 GET_TETROMINO_DATA_ZERO:
     INC     HL                          ; Advance one byte into the decompressed sprite buffer.
-    DJNZ    GET_TETROMINO_DATA_BIT      ; Loop until all bits are scanned
+    DJNZ    GET_TETROMINO_DATA_BIT      ; Loop until all bits are scanned (when B reaches 0)
     LD      A,E                         ; Load the next byte in A
     DEC     C                           ; Byte done, remove it from the counter
-    JR      NZ,GET_TETROMINO_DATA_BYTE  ; Jump to make the second byte if that's where we are at
+    JR      NZ,GET_TETROMINO_DATA_BYTE  ; Jump to decompress the second byte if the byte counter != 0.
 
     RET                                 
