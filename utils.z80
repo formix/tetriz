@@ -6,12 +6,49 @@
     RLA
     RLA
     AND     0b11111000
+    ; ENDM MULA_BY_8
     ENDM
+
+    MACRO MULA_BY_4
+    RLA
+    RLA
+    AND     0b11111100
+    ; ENDM MULA_BY_4
+    ENDM
+
+    MACRO MULA_BY_12                ; 12A = 8A + 4A
+    PUSH    DE                      ; Save DE since it will be used to buf some values
+    LD      D,A                     ; Save A in D
+    MULA_BY_8                       ; A = 8A
+    LD      E,A                     ; E = 8A
+    LD      A,D                     ; Restore A
+    MULA_BY_4                       ; A = 4A
+    ADD     E                       ; A = 4A + 8A = 12A
+    POP     DE                      ; Restore DE
+    ;ENDM MULA_BY_12
+    ENDM
+
+    MACRO ADDDE &val
+    EX      DE,HL                   ; Moves DE into HL to do some math on it.
+    ADDHL   &val                    ; Adds the value to HL
+    EX      DE,HL                   ; Get the value back into dE
+    ; ENDM ADDDE &val
+    ENDM
+
+    MACRO ADDHL &val
+    PUSH    BC                      ; Save BC
+    LD      BC,&val                 ; Put the value to add into BC
+    ADD     HL,BC                   ; Add the value to add to HL
+    POP     BC                      ; Restore BC
+    ; ENDM ADDHL &val
+    ENDM
+
 
     MACRO SWAPHL
     LD      A,H
     LD      H,L
     LD      L,A
+    ; ENDM SWAPHL
     ENDM
 
 

@@ -20,13 +20,6 @@ BOARD       DEFS (BOARD_HEIGHT + 2) * (BOARD_WIDTH + 2)
 
 #code   _BOARD
 
-    MACRO ADDHL &val
-    PUSH    DE
-    LD      DE,&val
-    ADD     HL,DE
-    POP     DE
-    ENDM
-
 ; -----=== Subroutines ===-----
 
 ; Initialize a 12 x 22 byte table. The bit 7 of each byte indicate that the
@@ -39,7 +32,7 @@ INIT_BOARD:
     LD      E,0b00000000        ; Free area value 0
 
 ; The first row is filled with boundary values
-    LD      C,BOARD_WIDTH+2
+    LD      C,BOARD_WIDTH + 2
 IB_FIRST_ROW:
     LD      (HL),D              ; Paint a boundary cell
     INC     HL                  ; Move to the next cell
@@ -72,34 +65,45 @@ IB_LAST_ROW:           ; The last row is filled with boundary values
     RET                 ; GTFO
 
 
-; Load the tetromino from IX into the board.
+; Load the tetromino from IX into the board at row, col (B,C).
 ; Parameters: IX contains the tetromino sprite address.
+;             B  contains the he row value
+;             C  contains the column value
+; Changes: A,B,C,D,E
+;
+; Remarks:
+; We are adding togeteher all tetromino cells with all matching board cells, into the board cell.
+; Since empty tetromino cells are 0, it has no impact on the resulting board cell value. Moreover,
+; since empty board cells are 0, it will let tetromino filled cell go through the board
+; unhindered. But collision will result if the final board cell is different than the original
+; tetromino cell. We do not take that into account here since we expect the collison test have
+; been made prior calling the current subroutine.
+
 LOAD_TETROMINO:
-;     LD      D,(IX+TETROMINO_ROW)    ; The row number
-;     LD      E,BOARD_WIDTH + 2       ; Colum per rows, including borders
-;     CALL    MUL8                    ; Multiply The wor number by the line the tetromino is at
-;     LD      A,L                     ; Load the rowshift into A (will always be smaller than 256)
-;     ADD     (IX+TETROMINO_COL)      ; Add the column shift, A = position
-;     LD      H,0                     ; Resets H
-;     LD      L,A                     ; HL = byte sprite position in the board
-;     LD      HL,BOARD                ; HL = Byte address of sprite position
+    PUSH    IX                      ; Put IX on the stack to be grabbed by HL
+    POP     HL                      ; Get the tetromino sprite address into HL
+    ADDHL   TETROMINO_DATA          ; HL = TetrominoCell at index 0
+    LD      A,B                     ; A = Row
+    MULA_BY_12                      ; A = 12 * Row
+    ADD     C                       ; A = 12 * Row + Col
+    LD      D,0                     ; Reset D
+    LD      E,A                     ; DE = 12 * Row + Col
+    ADDDE   BOARD                   ; DE = Destination BoardCell
 
-;     LD      DE,(IX+TETROMINO_DATA)  ; Get the sprite data in DE
+    LD      C,4                     ; Load the number of sprite rows in C
+LOAD_TETROMINO_ROW:
+    LD      B,4                     ; Load the number of sprite colums in B
+LOAD_TETROMINO_COL:
+    LD      A,(HL)                  ; A = TetrominoCellValue
+    EX      DE,HL                   ; HL = BoardCell; DE = TetrominoCell
+    ADD     A,(HL)                  ; A = A + BoardCellValue
+    EX      DE,HL                   ; HL = TetrominoCell; DE = BoardCell
+    LD      (DE),A                  ; BoardCellValue = TetrominoCellValue
+    INC     HL                      ; Move to the next TetrominoCell
+    INC     DE                      ; Move to the next BoardCell
+    DJNZ    LOAD_TETROMINO_COL      ; B = B - 1; Loop to _COL until B == 0.
+    ADDDE   BOARD_WIDTH - 4         ; Move to the BoardCell pointer to the next board row
+    DEC     C                       ; One less row to go
+    JR      NZ,LOAD_TETROMINO_ROW   ; Load the next row if there is still rows to do...
 
-;     XOR     A                       ; Reset A and the carry flag
-;     ADD     A,(IX+TETROMINO_INDEX)  ; A = Sprite index
-
-;     LD      C,4                     ; Row count in C
-; LOAD_TETROMINO_ROW:
-;     LD      B,4                     ; Column count in B
-; LOAD_TETROMINO_COL:
-;     LD      (HL),A                  ; Loads the sprite index in A
-;     INC     HL
-;     DJNZ    LOAD_TETROMINO_COL:
-;     PUSH    AF                      ; Save flags
-;     ADDHL   8                       ; HL=HL+8 (go to the next row)
-;     POP     AF                      ; Restore flags
-;     DEC     C
-;     JR      NZ,LOAD_TETROMINO_ROW
-    
-    RET
+    RET                             ; ...else, we are done.
