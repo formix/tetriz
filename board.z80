@@ -102,7 +102,7 @@ LOAD_TETROMINO_COL:
     INC     HL                      ; Move to the next TetrominoCell
     INC     DE                      ; Move to the next BoardCell
     DJNZ    LOAD_TETROMINO_COL      ; B = B - 1; Loop to _COL until B == 0.
-    ADDDE   BOARD_WIDTH - 4         ; Move to the BoardCell pointer to the next board row
+    ADDDE   BOARD_WIDTH - 2         ; Move to the BoardCell pointer to the next board row
     DEC     C                       ; One less row to go
     JR      NZ,LOAD_TETROMINO_ROW   ; Load the next row if there is still rows to do...
 
