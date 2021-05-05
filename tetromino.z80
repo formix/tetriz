@@ -119,6 +119,7 @@ GET_TETROMINO_DATA_LOOP:
 ;     JR      Z,GET_TETROMINO_DATA_ZERO   ; Check if the current sprite cell is filled or empty
 ;     PUSH    AF                          ; Save the sprite byte being decompressed
 ;     LD      A,(IX+TETROMINO_INDEX)      ; A = tetromino index
+;     INC     A                           ; Make the tetromino index one more since 0 is empty
 ;     LD      (HL),A                      ; Set the current byte to the tetromino index
 ;     POP     AF                          ; Restores the byte being decompressed
 ; GET_TETROMINO_DATA_ZERO:
