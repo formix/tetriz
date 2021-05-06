@@ -37,9 +37,7 @@ TETROMINOS: DEFW $0E40,$4C40,$4E00,$4640    ; Tetromino index 0, orientation 0 t
 ;           - HL: The random value used to select the current tetromino and the next one.
 ; Changes: IX,A,B,C,D,E,H,L
 INIT_TETROMINO_AND_NEXT:
-    PUSH    HL
     CALL    INIT_TETROMINO
-    POP     HL
     SWAPHL
     JP      INIT_NEXT_TETROMINO
 
@@ -48,6 +46,7 @@ INIT_TETROMINO_AND_NEXT:
 ;       - HL: The shape index.
 ; Changes: A,B,C,D,E,IX
 INIT_TETROMINO:
+    PUSH    HL
     LD      C,TETROMINO_COUNT
     CALL    MODULO                      ; 0 <= A < TETROMINO_COUNT
     LD      H,0
@@ -57,6 +56,7 @@ INIT_TETROMINO:
     LD      (IX+TETROMINO_ROW),0
     LD      (IX+TETROMINO_COL),4
     CALL    GET_TETROMINO_DATA
+    POP     HL
     RET
 
 
@@ -90,6 +90,7 @@ INIT_NEXT_TETROMINO_OK:
 ; Changes: A,B,C,D,E,H,L
 GET_TETROMINO_DATA:
 
+    ; Load tetromino compressed data into DE
     LD      A,L                         ; Put the tetromino index in A
     MULA_BY_8                           ; Multiply the tetromino index by 8 (each tetromino is 8 byte).
     ADD     H                           ; Add the sprite shift (orientation) to the tetromino index    
@@ -101,6 +102,8 @@ GET_TETROMINO_DATA:
     LD      E,(HL)
     INC     HL
     LD      D,(HL)                      ; DE contains the tetromino compressed data.
+
+    
     PUSH    IX
     POP     HL                          ; HL = TETROMINO_SPRITE
     LD      BC,TETROMINO_DATA

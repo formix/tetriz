@@ -45,9 +45,11 @@
 
 
     MACRO SWAPHL
+    PUSH    AF
     LD      A,H
     LD      H,L
     LD      L,A
+    POP     AF
     ; ENDM SWAPHL
     ENDM
 
